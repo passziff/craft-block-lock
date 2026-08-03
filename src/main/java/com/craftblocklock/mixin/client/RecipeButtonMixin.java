@@ -1,6 +1,7 @@
 package com.craftblocklock.mixin.client;
 
 import com.craftblocklock.client.ClientLockState;
+import com.craftblocklock.client.LockedRecipeWidget;
 import com.craftblocklock.client.LockedRecipeRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,7 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Mixin(RecipeButton.class)
-abstract class RecipeButtonMixin {
+abstract class RecipeButtonMixin implements LockedRecipeWidget {
+    @Override
+    public boolean craftblocklock$isLockedRecipe() {
+        RecipeButton button = (RecipeButton) (Object) this;
+        return ClientLockState.isRecipeDisplayLocked(button.getCurrentRecipe());
+    }
+
     @Inject(method = "extractWidgetRenderState", at = @At("TAIL"))
     private void craftblocklock$renderLockedRecipe(
         GuiGraphicsExtractor graphics,

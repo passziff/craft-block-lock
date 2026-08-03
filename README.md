@@ -2,82 +2,102 @@
 
 # Craft & Block Lock
 
-Craft & Block Lock is a server-authoritative Fabric mod for Minecraft Java Edition 26.2. It turns ordinary progression into a challenge by limiting recipes and player-placed blocks per player.
+Craft & Block Lock is a Fabric challenge mod for Minecraft Java Edition 26.2.
 
-## Rules
+Each player can craft every recipe once. The optional block rule also allows only one active placement of each block item at a time. Break the placed block to use that block type again.
 
-- Recipe locks are per player and persist across logouts and server restarts.
-- A player can complete each non-exempt recipe ID only once.
-- Recipes with different IDs remain separate, even when they create the same item.
-- Different ingredients accepted by the same recipe ID do not provide extra uses.
-- Blaze Powder and Eyes of Ender are exempt by default, so normal survival progression remains possible.
-- The optional block lock allows one active player-placed block per item type.
-- Breaking that tracked block unlocks its type, so the same player can place it again.
-- Another player breaking the tracked block also releases the original owner's lock.
-- Missing tracked blocks are reconciled when the owner next tries to place that type, covering explosions and other indirect removal.
-- The server remains authoritative, while a synchronized client check prevents visual ghost placements.
-- Creative mode players bypass recipe and block locks by default.
+## Main features
 
-Blocked actions display a short action-bar message and play a low note-block sound by default. The sound uses Minecraft's Players sound category, so the Master Volume and Players sliders control it. Locked recipes are darkened and marked with a small barrier icon in the recipe book and result slot. Messages, sounds, and recipe visuals can be disabled independently.
+- One craft per Minecraft recipe ID and player
+- One active placement per block item type and player
+- Progress saved across logouts and server restarts
+- Creative mode bypass enabled by default
+- Locked recipes marked in the recipe book and result slot
+- Server-side checks with client-side prediction blocking
+- Messages, sounds, visuals, exceptions and resets are configurable
+- Optional Mod Menu settings screen
+
+## Screenshots
+
+| Locked recipe visuals | Block placement feedback |
+|---|---|
+| ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block.png) |
+
+## How recipe locks work
+
+The recipe itself is locked, not the output item.
+
+- Every Minecraft recipe ID can be completed once per player.
+- Different recipe IDs remain separate even if they create the same item.
+- Ingredient choices within the same recipe ID do not provide extra uses.
+- For example, crafting sticks once locks the stick recipe regardless of the plank type used.
+- A crafting-table recipe and a stonecutter recipe remain separate when their IDs are different.
+
+Blaze Powder and Eyes of Ender are exempt by default so normal survival progression remains possible.
+
+## How block locks work
+
+The block rule tracks placements by block item type.
+
+- A player may have one active placement of each block type.
+- Breaking the tracked block unlocks that type.
+- Another player breaking it also releases the original owner's lock.
+- Missing blocks are checked again on the next placement attempt, which covers explosions and similar removal.
+- Run `/cbl blocks list [page]` to see your active block locks.
+- Run `/cbl recipes list [page]` to see your locked recipe IDs.
 
 ## Supported crafting paths
 
-- Player inventory 2×2 crafting grid
+- Player inventory crafting
 - Crafting table
-- Furnace
-- Blast furnace
-- Smoker
+- Furnace, blast furnace and smoker
 - Stonecutter
 - Smithing table
 - Brewing stand transformations
 - Crafter outputs
 - Campfire and soul campfire cooking
-- Modded recipes that use the corresponding vanilla recipe and output paths
+- Modded recipes using the matching vanilla recipe and output paths
 
-Recipe-backed stations are keyed by recipe identifier. Brewing transformations use a stable key derived from the input item and potion, ingredient, and output item and potion. Automated and delayed outputs carry a hidden, unique provenance marker until a player acquires them, preventing separate operations from merging to bypass the lock.
-
-Vanilla utility stations that do not use recipes, including anvils, enchanting tables, grindstones, looms, and cartography tables, remain freely usable by design.
+Anvils, enchanting tables, grindstones, looms and cartography tables remain freely usable.
 
 ## Installation
 
 1. Install Fabric Loader 0.19.3 or newer for Minecraft 26.2.
 2. Install Fabric API 0.156.0+26.2 or a compatible newer 26.2 build.
-3. Put `craft-block-lock-1.0.0-rc.1.jar` in the `mods` folder on both the server and every connecting client. For single-player, install it locally as usual.
-4. Start Minecraft with Java 25.
+3. Put `craft-block-lock-1.0.0-rc.2.jar` in the `mods` folder.
+4. Install the mod on the server and all connecting clients for multiplayer.
+5. Start Minecraft with Java 25.
 
-[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.0 or newer is optional. When installed, it provides a settings screen for local and single-player configuration. Multiplayer server settings still require operator commands.
+[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.0 or newer is optional. It provides a settings screen for local and single-player configuration. Dedicated multiplayer server settings remain controlled by operator commands.
 
 ## Commands
 
-Run `/cbl`, `/cbl status`, or `/cbl help` to view the current settings and commands. Configuration-changing commands require game-master permission (operator level 2).
+Run `/cbl help` in game for the command list. Commands that change settings or reset progress require game-master permission.
 
 | Command | Purpose |
 |---|---|
-| `/cbl help` | Show commands available to the current player |
+| `/cbl status` | Show the current settings |
+| `/cbl help` | Show commands available to you |
+| `/cbl recipes list [page]` | Show your locked recipes |
+| `/cbl blocks list [page]` | Show your active block locks |
 | `/cbl craft on\|off` | Enable or disable recipe locking |
-| `/cbl blocks on\|off` | Enable or disable block-placement locking |
+| `/cbl blocks on\|off` | Enable or disable block locking |
 | `/cbl creative-bypass on\|off` | Toggle the Creative mode bypass |
-| `/cbl feedback messages on\|off` | Toggle blocked-action messages |
-| `/cbl feedback sounds on\|off` | Toggle blocked-action sounds |
-| `/cbl feedback visuals on\|off` | Toggle locked recipe shading and barrier icons |
-| `/cbl reload` | Reload the JSON configuration from disk |
-| `/cbl reset <player> recipes` | Ask for confirmation before clearing a player's recipe history |
-| `/cbl reset <player> blocks` | Ask for confirmation before clearing a player's active block locks |
-| `/cbl reset <player> all` | Ask for confirmation before clearing all locks for a player |
-| `/cbl exceptions recipe list` | List recipe exceptions |
-| `/cbl exceptions recipe add <recipe>` | Add an unlimited recipe |
-| `/cbl exceptions recipe remove <recipe>` | Remove a recipe exception |
-| `/cbl exceptions block list` | List block exceptions |
-| `/cbl exceptions block add <block>` | Add an unlimited block item |
-| `/cbl exceptions block remove <block>` | Remove a block exception |
+| `/cbl feedback messages on\|off` | Toggle denial messages |
+| `/cbl feedback sounds on\|off` | Toggle denial sounds |
+| `/cbl feedback visuals on\|off` | Toggle locked recipe visuals |
+| `/cbl reset <player> recipes` | Reset a player's recipe history after confirmation |
+| `/cbl reset <player> blocks` | Reset a player's active block locks after confirmation |
+| `/cbl reset <player> all` | Reset all progress for a player after confirmation |
+| `/cbl exceptions recipe <list\|add\|remove>` | Manage unlimited recipes |
+| `/cbl exceptions block <list\|add\|remove>` | Manage unlimited block items |
+| `/cbl reload` | Reload `craftblocklock.json` |
 
-Recipe and block arguments provide in-game suggestions. Use recipe identifiers such as `minecraft:ender_eye` and block item identifiers such as `minecraft:torch`.
+Recipe and block arguments support in-game suggestions. Reset confirmations expire after 15 seconds.
 
-Reset commands display a clickable confirmation that expires after 15 seconds. No progress is deleted until the reset is confirmed.
+## Configuration
 
-## Configuration file
-
-The mod creates `config/craftblocklock.json` on first launch. Commands save changes to this file immediately.
+The mod creates `config/craftblocklock.json` on first launch. Commands save changes immediately.
 
 ```json
 {
@@ -95,11 +115,15 @@ The mod creates `config/craftblocklock.json` on first launch. Commands save chan
 }
 ```
 
-The file can also be edited manually. Run `/cbl reload` afterward, or edit it while the server is stopped.
+The denial sound uses Minecraft's Players sound category. The Master Volume and Players sliders control it.
+
+## Current testing status
+
+Single-player testing is in progress for the 1.0 release. Multiplayer support is implemented but has not been tested yet. Please report issues with the Minecraft version, Fabric versions and steps needed to reproduce the problem.
 
 ## Build from source
 
-Java 25 and Gradle 9.5 are required. The included Gradle wrapper can build the project:
+Java 25 and Gradle 9.5 are required.
 
 ```bash
 ./gradlew build
@@ -109,4 +133,4 @@ The installable JAR is written to `build/libs/`.
 
 ## License
 
-The source code is available under the MIT License.
+Craft & Block Lock is available under the MIT License.

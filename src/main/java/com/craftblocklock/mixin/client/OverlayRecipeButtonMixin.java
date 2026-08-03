@@ -1,6 +1,7 @@
 package com.craftblocklock.mixin.client;
 
 import com.craftblocklock.client.ClientLockState;
+import com.craftblocklock.client.LockedRecipeWidget;
 import com.craftblocklock.client.LockedRecipeRenderer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -16,11 +17,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(targets = "net.minecraft.client.gui.screens.recipebook.OverlayRecipeComponent$OverlayRecipeButton")
-abstract class OverlayRecipeButtonMixin extends AbstractWidget {
+abstract class OverlayRecipeButtonMixin extends AbstractWidget implements LockedRecipeWidget {
     @Shadow @Final private RecipeDisplayId recipe;
 
     protected OverlayRecipeButtonMixin(int x, int y, int width, int height, Component message) {
         super(x, y, width, height, message);
+    }
+
+    @Override
+    public boolean craftblocklock$isLockedRecipe() {
+        return ClientLockState.isRecipeDisplayLocked(this.recipe);
     }
 
     @Inject(method = "extractWidgetRenderState", at = @At("TAIL"))

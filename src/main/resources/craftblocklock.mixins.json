@@ -17,6 +17,7 @@
   ],
   "client": [
     "client.AbstractContainerScreenMixin",
+    "client.AbstractWidgetMixin",
     "client.ClientBlockItemMixin",
     "client.OverlayRecipeButtonMixin",
     "client.RecipeBookPageMixin",

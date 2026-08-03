@@ -4,6 +4,7 @@ import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.data.LockSavedData;
 import com.craftblocklock.lock.LockManager;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -21,7 +22,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CraftBlockLockCommands {
     private static final long RESET_CONFIRMATION_WINDOW_MS = 15_000L;
+    private static final int BLOCKS_PER_PAGE = 8;
+    private static final int RECIPES_PER_PAGE = 8;
     private static final Map<PendingReset, Long> PENDING_RESETS = new ConcurrentHashMap<>();
 
     private CraftBlockLockCommands() {
@@ -50,10 +56,22 @@ public final class CraftBlockLockCommands {
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("on").executes(context -> setCraftLock(context, true)))
                 .then(Commands.literal("off").executes(context -> setCraftLock(context, false))))
+            .then(Commands.literal("recipes")
+                .then(Commands.literal("list")
+                    .executes(context -> listLockedRecipes(context, 1))
+                    .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                        .executes(context -> listLockedRecipes(context, IntegerArgumentType.getInteger(context, "page"))))))
             .then(Commands.literal("blocks")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                .then(Commands.literal("on").executes(context -> setBlockLock(context, true)))
-                .then(Commands.literal("off").executes(context -> setBlockLock(context, false))))
+                .then(Commands.literal("list")
+                    .executes(context -> listLockedBlocks(context, 1))
+                    .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                        .executes(context -> listLockedBlocks(context, IntegerArgumentType.getInteger(context, "page")))))
+                .then(Commands.literal("on")
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .executes(context -> setBlockLock(context, true)))
+                .then(Commands.literal("off")
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .executes(context -> setBlockLock(context, false))))
             .then(Commands.literal("creative-bypass")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("on").executes(context -> setCreativeBypass(context, true)))
@@ -128,6 +146,8 @@ public final class CraftBlockLockCommands {
         sendHelpLine(context, "Craft & Block Lock commands:");
         sendHelpLine(context, "/cbl status: show the current settings");
         sendHelpLine(context, "/cbl help: show this command list");
+        sendHelpLine(context, "/cbl recipes list [page]: show your locked recipes");
+        sendHelpLine(context, "/cbl blocks list [page]: show your active block locks");
 
         if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(context.getSource())) {
             sendHelpLine(context, "An operator can change settings and reset progress.");
@@ -142,6 +162,113 @@ public final class CraftBlockLockCommands {
         sendHelpLine(context, "/cbl exceptions <recipe|block> <list|add|remove>");
         sendHelpLine(context, "/cbl reload: reload craftblocklock.json");
         return 1;
+    }
+
+    private static int listLockedRecipes(CommandContext<CommandSourceStack> context, int requestedPage) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        List<String> lockedRecipes = LockSavedData.get(context.getSource().getServer())
+            .getCraftedRecipes(player.getUUID())
+            .stream()
+            .filter(key -> !CraftBlockLock.CONFIG.isRecipeException(key))
+            .sorted()
+            .toList();
+
+        if (lockedRecipes.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("You have no locked recipes."), false);
+            return 1;
+        }
+
+        int totalPages = (lockedRecipes.size() + RECIPES_PER_PAGE - 1) / RECIPES_PER_PAGE;
+        int page = Math.min(requestedPage, totalPages);
+        int start = (page - 1) * RECIPES_PER_PAGE;
+        int end = Math.min(start + RECIPES_PER_PAGE, lockedRecipes.size());
+
+        context.getSource().sendSuccess(() -> Component.literal(
+            "Locked recipes (" + lockedRecipes.size() + ") - page " + page + "/" + totalPages
+        ).withStyle(ChatFormatting.GOLD), false);
+
+        for (String recipeId : lockedRecipes.subList(start, end)) {
+            Component line = Component.literal("- ")
+                .append(Component.literal(recipeId).withStyle(ChatFormatting.WHITE));
+            context.getSource().sendSuccess(() -> line, false);
+        }
+
+        sendPageLinks(context, "/cbl recipes list ", page, totalPages);
+        return lockedRecipes.size() + 1;
+    }
+
+    private static int listLockedBlocks(CommandContext<CommandSourceStack> context, int requestedPage) throws CommandSyntaxException {
+        ServerPlayer player = context.getSource().getPlayerOrException();
+        List<String> lockedBlocks = LockSavedData.get(context.getSource().getServer())
+            .getPlacedTypes(player.getUUID())
+            .stream()
+            .filter(key -> !CraftBlockLock.CONFIG.isBlockException(key))
+            .sorted(Comparator.comparing(CraftBlockLockCommands::blockName).thenComparing(String::compareTo))
+            .toList();
+
+        if (lockedBlocks.isEmpty()) {
+            context.getSource().sendSuccess(() -> Component.literal("You have no active block locks."), false);
+            return 1;
+        }
+
+        int totalPages = (lockedBlocks.size() + BLOCKS_PER_PAGE - 1) / BLOCKS_PER_PAGE;
+        int page = Math.min(requestedPage, totalPages);
+        int start = (page - 1) * BLOCKS_PER_PAGE;
+        int end = Math.min(start + BLOCKS_PER_PAGE, lockedBlocks.size());
+
+        context.getSource().sendSuccess(() -> Component.literal(
+            "Active block locks (" + lockedBlocks.size() + ") - page " + page + "/" + totalPages
+        ).withStyle(ChatFormatting.GOLD), false);
+
+        for (String blockId : lockedBlocks.subList(start, end)) {
+            Component line = Component.literal("- ")
+                .append(Component.literal(blockName(blockId)).withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" (" + blockId + ")").withStyle(ChatFormatting.GRAY));
+            context.getSource().sendSuccess(() -> line, false);
+        }
+
+        sendPageLinks(context, "/cbl blocks list ", page, totalPages);
+        return lockedBlocks.size() + 1;
+    }
+
+    private static void sendPageLinks(
+        CommandContext<CommandSourceStack> context,
+        String command,
+        int page,
+        int totalPages
+    ) {
+        Component links = Component.empty();
+        if (page > 1) {
+            int previousPage = page - 1;
+            links = links.copy().append(Component.literal("[Previous page]").withStyle(style -> style
+                .withColor(ChatFormatting.GREEN)
+                .withClickEvent(new ClickEvent.RunCommand(command + previousPage))
+                .withHoverEvent(new HoverEvent.ShowText(Component.literal("Show page " + previousPage)))));
+        }
+        if (page < totalPages) {
+            int nextPage = page + 1;
+            if (page > 1) {
+                links = links.copy().append(Component.literal(" "));
+            }
+            links = links.copy().append(Component.literal("[Next page]").withStyle(style -> style
+                .withColor(ChatFormatting.GREEN)
+                .withClickEvent(new ClickEvent.RunCommand(command + nextPage))
+                .withHoverEvent(new HoverEvent.ShowText(Component.literal("Show page " + nextPage)))));
+        }
+        if (!links.getString().isEmpty()) {
+            Component pageLinks = links;
+            context.getSource().sendSuccess(() -> pageLinks, false);
+        }
+    }
+
+    private static String blockName(String blockId) {
+        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(blockId);
+        if (id == null) {
+            return blockId;
+        }
+        Item item = BuiltInRegistries.ITEM.getValue(id);
+        ItemStack stack = new ItemStack(item);
+        return stack.isEmpty() ? blockId : stack.getHoverName().getString();
     }
 
     private static int setCraftLock(CommandContext<CommandSourceStack> context, boolean enabled) {

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-rc.2 - 2026-08-03
+
+### Added
+
+- A 128 by 128 mod icon for Mod Menu and launchers that display Fabric metadata icons.
+- `/cbl blocks list [page]` for viewing your own active block locks.
+- `/cbl recipes list [page]` for viewing your own locked recipe IDs.
+- Recipe and block screenshots in the README.
+
+### Changed
+
+- Locked recipe buttons now play only the denial sound instead of the normal click and denial sounds together.
+- The README is shorter, clearer and includes the current multiplayer testing status.
+
 ## 1.0.0-rc.1 - 2026-08-03
 
 ### Added

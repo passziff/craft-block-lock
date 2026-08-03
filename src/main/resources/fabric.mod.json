@@ -12,6 +12,7 @@
     "issues": "https://github.com/passziff/craft-block-lock/issues"
   },
   "license": "MIT",
+  "icon": "assets/craftblocklock/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
