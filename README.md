@@ -21,7 +21,7 @@ Each player can craft every recipe once. The optional block rule also allows onl
 
 | Locked recipe visuals | Active block limit |
 |---|---|
-| ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block.png) |
+| ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block-v2.png) |
 
 ## How recipe locks work
 
