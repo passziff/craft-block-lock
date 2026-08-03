@@ -16,7 +16,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.item.FallingBlockEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -31,6 +31,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,7 +105,8 @@ public final class LockManager {
             && fallingEntity.level() == level
             && data.getFallingPlacement(fallingEntity.getUUID()).isPresent()
             && !newState.isAir()
-            && !newState.is(Blocks.MOVING_PISTON)) {
+            && !newState.is(Blocks.MOVING_PISTON)
+            && newState.getBlock() == fallingEntity.getBlockState().getBlock()) {
             completeFallingPlacement(level, pos, newState, fallingEntity.getUUID());
             return;
         }
@@ -471,18 +473,24 @@ public final class LockManager {
         }
     }
 
+    public static void markOperation(ItemStack stack, String recipeKey, String batchId) {
+        if (!CraftBlockLock.CONFIG.isRecipeException(recipeKey)) {
+            OperationKeys.mark(stack, recipeKey, batchId);
+        }
+    }
+
     public static void consumeProvenance(ServerPlayer player, ItemStack stack) {
         if (bypassesLocks(player)) {
             OperationKeys.readProvenance(stack).ifPresent(provenance -> {
                 OperationKeys.clear(stack);
-                clearMatchingProvenance(player.getInventory(), provenance);
+                clearMatchingProvenance(player, provenance);
             });
             return;
         }
         OperationKeys.readProvenance(stack).ifPresent(provenance -> {
             lockRecipe(player, provenance.recipeKey());
             OperationKeys.clear(stack);
-            clearMatchingProvenance(player.getInventory(), provenance);
+            clearMatchingProvenance(player, provenance);
         });
     }
 
@@ -547,11 +555,27 @@ public final class LockManager {
         return CraftBlockLock.CONFIG.creativeModeBypass && player.isCreative();
     }
 
-    private static void clearMatchingProvenance(Inventory inventory, OperationKeys.Provenance provenance) {
-        for (ItemStack stack : inventory.getNonEquipmentItems()) {
-            if (OperationKeys.readProvenance(stack).filter(provenance::equals).isPresent()) {
-                OperationKeys.clear(stack);
+    private static void clearMatchingProvenance(ServerPlayer player, OperationKeys.Provenance provenance) {
+        boolean changed = false;
+        Set<Container> containers = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        player.containerMenu.slots.forEach(slot -> containers.add(slot.container));
+
+        for (Container container : containers) {
+            boolean containerChanged = false;
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                ItemStack item = container.getItem(slot);
+                if (OperationKeys.readProvenance(item).filter(provenance::equals).isPresent()) {
+                    OperationKeys.clear(item);
+                    containerChanged = true;
+                    changed = true;
+                }
             }
+            if (containerChanged) {
+                container.setChanged();
+            }
+        }
+        if (changed) {
+            player.containerMenu.broadcastChanges();
         }
     }
 

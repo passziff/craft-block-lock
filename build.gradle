@@ -10,24 +10,27 @@ repositories {
     }
 }
 
-version = project.mod_version
-group = project.maven_group
+def modVersion = providers.gradleProperty('mod_version').get()
+def archiveBaseName = providers.gradleProperty('archives_base_name').get()
+
+version = modVersion
+group = providers.gradleProperty('maven_group').get()
 
 base {
-    archivesName = project.archives_base_name
+    archivesName = archiveBaseName
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    compileOnly "com.terraformersmc:modmenu:20.0.1"
+    compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 }
 
 processResources {
-    inputs.property 'version', project.version
+    inputs.property 'version', modVersion
     filesMatching('fabric.mod.json') {
-        expand version: project.version
+        expand version: modVersion
     }
 }
 
@@ -44,7 +47,7 @@ java {
 
 jar {
     from('LICENSE') {
-        rename { "${it}_${project.base.archivesName.get()}" }
+        rename { "${it}_${archiveBaseName}" }
     }
 }
 

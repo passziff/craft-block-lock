@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0-rc.2 - 2026-08-03
+## 0.9.0 - 2026-08-03
 
 ### Added
 
@@ -9,6 +9,10 @@
 - `/cbl recipes list [page]` for viewing your own locked recipe IDs.
 - Recipe and block exception management in the Mod Menu settings screen.
 - Recipe and block screenshots in the README.
+- Creative mode bypass for recipe and block locks.
+- `/cbl help` with a shorter list for regular players and the full operator command list for operators.
+- A 15-second clickable confirmation for all reset commands.
+- Optional Mod Menu 20 configuration for local and single-player settings.
 
 ### Fixed
 
@@ -18,6 +22,8 @@
 - Falling blocks keep their lock while moving, transfer it to the landing position and release it if the entity is destroyed.
 - Piston pushes and pulls transfer tracked placements, including slime and honey chains; piston-destroyed blocks are released.
 - The locked-block README screenshot now shows the complete message and HUD.
+- All equivalent potion bottles produced by one brewing cycle can be collected before that transformation is locked.
+- Falling-block landing transfers are limited to the block type actually carried by the tracked entity.
 
 ### Changed
 
@@ -27,21 +33,12 @@
 - The README is shorter, clearer and includes the current multiplayer testing status.
 - Block tracking now reacts to actual world changes instead of scanning every placement every server tick.
 - A capped background reconciliation pass remains as a low-cost safety net for unusual or modded changes.
-
-## 1.0.0-rc.1 - 2026-08-03
-
-### Added
-
-- Creative mode bypass for recipe and block locks.
-- `/cbl help` with a shorter list for regular players and the full operator command list for operators.
-- A 15-second clickable confirmation for all reset commands.
-- Optional Mod Menu 20 configuration screen for local and single-player settings.
-
-### Changed
-
 - Recipe locking is documented as one use per Minecraft recipe ID.
 - Denial sound behavior is documented under Minecraft's Players sound category.
 - GitHub artifact uploads now use `actions/upload-artifact@v7`.
+- Build metadata and documentation now identify this as the complete single-player-tested 0.9.0 release; multiplayer remains untested until 1.0.0.
+- Gradle task configuration no longer uses the two deprecated task-time project lookups.
+- The optional Mod Menu dependency uses the shared version property consistently.
 
 ## 0.2.1 - 2026-08-03
 

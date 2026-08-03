@@ -25,10 +25,14 @@ public final class OperationKeys {
     }
 
     public static void mark(ItemStack stack, String recipeKey) {
+        mark(stack, recipeKey, UUID.randomUUID().toString());
+    }
+
+    public static void mark(ItemStack stack, String recipeKey, String batchId) {
         if (!stack.isEmpty()) {
             CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
                 tag.putString(RECIPE_TAG, recipeKey);
-                tag.putString(BATCH_TAG, UUID.randomUUID().toString());
+                tag.putString(BATCH_TAG, batchId);
             });
         }
     }

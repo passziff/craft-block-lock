@@ -2,7 +2,7 @@
 
 # Craft & Block Lock
 
-Craft & Block Lock is a Fabric challenge mod for Minecraft Java Edition 26.2.
+Craft & Block Lock is a single-player-tested Fabric challenge mod for Minecraft Java Edition 26.2.
 
 Each player can craft every recipe once. The optional block rule also allows only one active placement of each block item at a time. Break the placed block to use that block type again.
 
@@ -65,13 +65,15 @@ Anvils, enchanting tables, grindstones, looms and cartography tables remain free
 
 ## Installation
 
+Download the installable JAR from [GitHub Releases](https://github.com/passziff/craft-block-lock/releases).
+
 1. Install Fabric Loader 0.19.3 or newer for Minecraft 26.2.
 2. Install Fabric API 0.156.0+26.2 or a compatible newer 26.2 build.
-3. Put `craft-block-lock-1.0.0-rc.2.jar` in the `mods` folder.
-4. Install the mod on the server and all connecting clients for multiplayer.
+3. Put `craft-block-lock-0.9.0.jar` in the `mods` folder.
+4. For experimental multiplayer use, install the mod on the server and all connecting clients.
 5. Start Minecraft with Java 25.
 
-[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.0 or newer is optional. It provides a settings screen for local and single-player configuration, including recipe and block exceptions. Dedicated multiplayer server settings remain controlled by operator commands.
+[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.1 or newer is optional. It provides a settings screen for local and single-player configuration, including recipe and block exceptions. Dedicated multiplayer server settings remain controlled by operator commands.
 
 ## Commands
 
@@ -122,15 +124,19 @@ The denial sound uses Minecraft's Players sound category. The Master Volume and 
 
 ## Current testing status
 
-Single-player testing is in progress for the 1.0 release. Multiplayer support is implemented but has not been tested yet. Please report issues with the Minecraft version, Fabric versions and steps needed to reproduce the problem.
+Version 0.9.0 is the complete, tested single-player release. Multiplayer support is implemented but remains untested and is not part of the 0.9.0 compatibility guarantee. Multiplayer testing and any resulting fixes are planned before 1.0.0.
+
+Please report issues with the Minecraft version, Fabric versions and steps needed to reproduce the problem.
 
 ## Build from source
 
-Java 25 and Gradle 9.5 are required.
+Java 25 is required. The included Gradle wrapper downloads the correct Gradle version.
 
 ```bash
-./gradlew build
+bash ./gradlew build
 ```
+
+This form also works if the executable bit was lost while downloading or extracting the source. On Windows, run `gradlew.bat build` instead.
 
 The installable JAR is written to `build/libs/`.
 
