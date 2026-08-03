@@ -15,11 +15,11 @@ Each player can craft every recipe once. The optional block rule also allows onl
 - Locked recipes marked in the recipe book and result slot
 - Server-side checks with client-side prediction blocking
 - Messages, sounds, visuals, exceptions and resets are configurable
-- Optional Mod Menu settings screen
+- Optional Mod Menu settings screen with recipe and block exception management
 
 ## Screenshots
 
-| Locked recipe visuals | Block placement feedback |
+| Locked recipe visuals | Active block limit |
 |---|---|
 | ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block.png) |
 
@@ -68,7 +68,7 @@ Anvils, enchanting tables, grindstones, looms and cartography tables remain free
 4. Install the mod on the server and all connecting clients for multiplayer.
 5. Start Minecraft with Java 25.
 
-[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.0 or newer is optional. It provides a settings screen for local and single-player configuration. Dedicated multiplayer server settings remain controlled by operator commands.
+[Mod Menu](https://modrinth.com/mod/modmenu) 20.0.0 or newer is optional. It provides a settings screen for local and single-player configuration, including recipe and block exceptions. Dedicated multiplayer server settings remain controlled by operator commands.
 
 ## Commands
 
@@ -134,3 +134,7 @@ The installable JAR is written to `build/libs/`.
 ## License
 
 Craft & Block Lock is available under the MIT License.
+
+<img src="assets/passo-logo.png" width="48" alt="Passo logo">
+
+Created by passo.

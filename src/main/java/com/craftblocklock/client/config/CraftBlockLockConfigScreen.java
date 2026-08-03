@@ -10,6 +10,9 @@ import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class CraftBlockLockConfigScreen extends Screen {
     private static final int BUTTON_WIDTH = 240;
     private static final int BUTTON_HEIGHT = 20;
@@ -21,6 +24,8 @@ public final class CraftBlockLockConfigScreen extends Screen {
     private boolean messagesEnabled;
     private boolean denialSoundsEnabled;
     private boolean lockedRecipeVisualsEnabled;
+    private final List<String> recipeExceptions;
+    private final List<String> blockExceptions;
 
     public CraftBlockLockConfigScreen(Screen parent) {
         super(Component.literal("Craft & Block Lock Settings"));
@@ -33,6 +38,8 @@ public final class CraftBlockLockConfigScreen extends Screen {
         this.messagesEnabled = config.messagesEnabled;
         this.denialSoundsEnabled = config.denialSoundsEnabled;
         this.lockedRecipeVisualsEnabled = config.lockedRecipeVisualsEnabled;
+        this.recipeExceptions = new ArrayList<>(config.recipeExceptions);
+        this.blockExceptions = new ArrayList<>(config.blockExceptions);
     }
 
     @Override
@@ -75,6 +82,14 @@ public final class CraftBlockLockConfigScreen extends Screen {
             button.setMessage(toggleText("Locked recipe visuals", this.lockedRecipeVisualsEnabled));
         }).pos(x, y).size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
 
+        y += 24;
+        this.addRenderableWidget(Button.builder(exceptionText("Recipe exceptions", this.recipeExceptions), button ->
+            this.minecraft.gui.setScreen(new CraftBlockLockExceptionsScreen(this, true, this.recipeExceptions))
+        ).pos(x, y).size((BUTTON_WIDTH - 4) / 2, BUTTON_HEIGHT).build());
+        this.addRenderableWidget(Button.builder(exceptionText("Block exceptions", this.blockExceptions), button ->
+            this.minecraft.gui.setScreen(new CraftBlockLockExceptionsScreen(this, false, this.blockExceptions))
+        ).pos(x + (BUTTON_WIDTH + 4) / 2, y).size((BUTTON_WIDTH - 4) / 2, BUTTON_HEIGHT).build());
+
         int bottomY = this.height - 28;
         this.addRenderableWidget(Button.builder(CommonComponents.GUI_CANCEL, button -> this.onClose())
             .pos(this.width / 2 - 154, bottomY).size(150, BUTTON_HEIGHT).build());
@@ -108,6 +123,8 @@ public final class CraftBlockLockConfigScreen extends Screen {
         config.messagesEnabled = this.messagesEnabled;
         config.denialSoundsEnabled = this.denialSoundsEnabled;
         config.lockedRecipeVisualsEnabled = this.lockedRecipeVisualsEnabled;
+        config.recipeExceptions = new ArrayList<>(this.recipeExceptions);
+        config.blockExceptions = new ArrayList<>(this.blockExceptions);
         config.save();
 
         MinecraftServer server = this.minecraft.getSingleplayerServer();
@@ -119,5 +136,9 @@ public final class CraftBlockLockConfigScreen extends Screen {
 
     private static Component toggleText(String label, boolean enabled) {
         return Component.literal(label + ": " + (enabled ? "ON" : "OFF"));
+    }
+
+    private static Component exceptionText(String label, List<String> exceptions) {
+        return Component.literal(label + " (" + exceptions.size() + ")");
     }
 }

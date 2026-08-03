@@ -18,10 +18,7 @@ public final class ClientFeedback {
 
     public static void showBlockLocked(Player player, ItemStack blockItem) {
         if (ClientLockState.messagesEnabled()) {
-            player.sendOverlayMessage(
-                Component.literal("Block locked: break your active " + blockItem.getHoverName().getString()
-                    + " placement before placing another.")
-            );
+            player.sendOverlayMessage(Component.literal("Block locked: you have already placed one somewhere."));
         }
         playSound(player);
     }

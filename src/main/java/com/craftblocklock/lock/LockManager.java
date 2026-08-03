@@ -149,9 +149,7 @@ public final class LockManager {
 
     public static void showBlockLocked(ServerPlayer player, ItemStack blockItem) {
         if (CraftBlockLock.CONFIG.messagesEnabled) {
-            player.sendOverlayMessage(
-                Component.literal("Block locked: break your active " + blockItem.getHoverName().getString() + " placement before placing another.")
-            );
+            player.sendOverlayMessage(Component.literal("Block locked: you have already placed one somewhere."));
         }
         if (CraftBlockLock.CONFIG.denialSoundsEnabled) {
             sendDenialSound(player, SoundEvents.NOTE_BLOCK_BASS, 0.7F, 0.6F);
