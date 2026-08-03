@@ -7,6 +7,7 @@ import com.craftblocklock.network.LockSyncPayload;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.server.level.ServerLevel;
 import org.slf4j.Logger;
@@ -21,9 +22,11 @@ public final class CraftBlockLock implements ModInitializer {
     public void onInitialize() {
         CONFIG = ModConfig.load();
         PayloadTypeRegistry.clientboundPlay().register(LockSyncPayload.TYPE, LockSyncPayload.CODEC);
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-            LockManager.syncLockState(handler.getPlayer())
-        );
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            LockManager.reconcilePlacements(handler.getPlayer());
+            LockManager.syncLockState(handler.getPlayer());
+        });
+        ServerTickEvents.END_SERVER_TICK.register(LockManager::reconcileAllPlayerPlacements);
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (CONFIG.blockLockEnabled && level instanceof ServerLevel serverLevel) {
                 LockManager.unlockPlacementAt(serverLevel, pos, state);

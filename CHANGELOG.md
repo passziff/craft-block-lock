@@ -10,6 +10,13 @@
 - Recipe and block exception management in the Mod Menu settings screen.
 - Recipe and block screenshots in the README.
 
+### Fixed
+
+- Active locks now transfer when a tracked block changes type, such as dirt becoming grass.
+- World changes are reconciled before stale client feedback can affect the next placement.
+- Multiple transformed placements of the same resulting block type remain tracked correctly.
+- The locked-block README screenshot now shows the complete message and HUD.
+
 ### Changed
 
 - Locked recipe buttons now play only the denial sound instead of the normal click and denial sounds together.

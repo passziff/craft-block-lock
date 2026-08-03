@@ -44,7 +44,7 @@ public final class LockSavedData extends SavedData {
     );
 
     private final Map<UUID, Set<String>> craftedRecipes = new HashMap<>();
-    private final Map<UUID, Map<String, StoredPlacement>> placementsByPlayer = new HashMap<>();
+    private final Map<UUID, Map<String, Map<String, StoredPlacement>>> placementsByPlayer = new HashMap<>();
     private final Map<String, StoredPlacement> placementsByPosition = new HashMap<>();
 
     public LockSavedData() {
@@ -55,10 +55,7 @@ public final class LockSavedData extends SavedData {
             .ifPresent(uuid -> craftedRecipes.put(uuid, new HashSet<>(recipeIds))));
 
         for (StoredPlacement placement : placements) {
-            parseUuid(placement.player()).ifPresent(uuid -> {
-                placementsByPlayer.computeIfAbsent(uuid, ignored -> new HashMap<>()).put(placement.type(), placement);
-                placementsByPosition.put(positionKey(placement.dimension(), placement.position()), placement);
-            });
+            parseUuid(placement.player()).ifPresent(uuid -> addPlacement(uuid, placement));
         }
     }
 
@@ -81,7 +78,24 @@ public final class LockSavedData extends SavedData {
     }
 
     public Optional<StoredPlacement> getPlacement(UUID playerId, String typeId) {
-        return Optional.ofNullable(placementsByPlayer.getOrDefault(playerId, Map.of()).get(typeId));
+        return getPlacements(playerId, typeId).stream().findFirst();
+    }
+
+    public List<StoredPlacement> getPlacements(UUID playerId, String typeId) {
+        Map<String, StoredPlacement> placements = placementsByPlayer
+            .getOrDefault(playerId, Map.of())
+            .get(typeId);
+        return placements == null ? List.of() : List.copyOf(placements.values());
+    }
+
+    public List<StoredPlacement> getPlacements(UUID playerId) {
+        return placementsByPlayer.getOrDefault(playerId, Map.of()).values().stream()
+            .flatMap(placements -> placements.values().stream())
+            .toList();
+    }
+
+    public Optional<StoredPlacement> getPlacementAt(String dimension, long position) {
+        return Optional.ofNullable(placementsByPosition.get(positionKey(dimension, position)));
     }
 
     public Set<String> getPlacedTypes(UUID playerId) {
@@ -89,46 +103,32 @@ public final class LockSavedData extends SavedData {
     }
 
     public void recordPlacement(UUID playerId, String typeId, String blockId, String dimension, long position) {
-        Map<String, StoredPlacement> playerPlacements = placementsByPlayer.computeIfAbsent(playerId, ignored -> new HashMap<>());
-        StoredPlacement oldPlacement = playerPlacements.remove(typeId);
-        if (oldPlacement != null) {
-            placementsByPosition.remove(positionKey(oldPlacement.dimension(), oldPlacement.position()));
-        }
-
+        removePlacementAtInternal(dimension, position);
         StoredPlacement placement = new StoredPlacement(playerId.toString(), typeId, blockId, dimension, position);
-        playerPlacements.put(typeId, placement);
-        placementsByPosition.put(positionKey(dimension, position), placement);
+        addPlacement(playerId, placement);
         setDirty();
     }
 
     public Optional<StoredPlacement> removePlacementAt(String dimension, long position) {
-        StoredPlacement placement = placementsByPosition.remove(positionKey(dimension, position));
+        StoredPlacement placement = removePlacementAtInternal(dimension, position);
         if (placement == null) {
             return Optional.empty();
         }
-
-        parseUuid(placement.player()).ifPresent(uuid -> {
-            Map<String, StoredPlacement> playerPlacements = placementsByPlayer.get(uuid);
-            if (playerPlacements != null) {
-                playerPlacements.remove(placement.type(), placement);
-                if (playerPlacements.isEmpty()) {
-                    placementsByPlayer.remove(uuid);
-                }
-            }
-        });
         setDirty();
         return Optional.of(placement);
     }
 
     public void removePlacement(UUID playerId, String typeId) {
-        Map<String, StoredPlacement> playerPlacements = placementsByPlayer.get(playerId);
+        Map<String, Map<String, StoredPlacement>> playerPlacements = placementsByPlayer.get(playerId);
         if (playerPlacements == null) {
             return;
         }
 
-        StoredPlacement placement = playerPlacements.remove(typeId);
-        if (placement != null) {
-            placementsByPosition.remove(positionKey(placement.dimension(), placement.position()));
+        Map<String, StoredPlacement> removed = playerPlacements.remove(typeId);
+        if (removed != null) {
+            removed.values().forEach(placement ->
+                placementsByPosition.remove(positionKey(placement.dimension(), placement.position()), placement)
+            );
             if (playerPlacements.isEmpty()) {
                 placementsByPlayer.remove(playerId);
             }
@@ -146,15 +146,18 @@ public final class LockSavedData extends SavedData {
     }
 
     public int clearPlacements(UUID playerId) {
-        Map<String, StoredPlacement> removed = placementsByPlayer.remove(playerId);
+        Map<String, Map<String, StoredPlacement>> removed = placementsByPlayer.remove(playerId);
         if (removed == null) {
             return 0;
         }
-        removed.values().forEach(placement ->
-            placementsByPosition.remove(positionKey(placement.dimension(), placement.position()))
+        List<StoredPlacement> placements = removed.values().stream()
+            .flatMap(typePlacements -> typePlacements.values().stream())
+            .toList();
+        placements.forEach(placement ->
+            placementsByPosition.remove(positionKey(placement.dimension(), placement.position()), placement)
         );
         setDirty();
-        return removed.size();
+        return placements.size();
     }
 
     private Map<String, List<String>> serializedRecipes() {
@@ -164,7 +167,52 @@ public final class LockSavedData extends SavedData {
     }
 
     private List<StoredPlacement> serializedPlacements() {
-        return placementsByPlayer.values().stream().flatMap(map -> map.values().stream()).toList();
+        return placementsByPlayer.values().stream()
+            .flatMap(types -> types.values().stream())
+            .flatMap(placements -> placements.values().stream())
+            .toList();
+    }
+
+    private void addPlacement(UUID playerId, StoredPlacement placement) {
+        String key = positionKey(placement.dimension(), placement.position());
+        StoredPlacement oldPlacement = placementsByPosition.put(key, placement);
+        if (oldPlacement != null) {
+            removeFromPlayerIndex(oldPlacement, key);
+        }
+
+        placementsByPlayer
+            .computeIfAbsent(playerId, ignored -> new HashMap<>())
+            .computeIfAbsent(placement.type(), ignored -> new HashMap<>())
+            .put(key, placement);
+    }
+
+    private StoredPlacement removePlacementAtInternal(String dimension, long position) {
+        String key = positionKey(dimension, position);
+        StoredPlacement placement = placementsByPosition.remove(key);
+        if (placement != null) {
+            removeFromPlayerIndex(placement, key);
+        }
+        return placement;
+    }
+
+    private void removeFromPlayerIndex(StoredPlacement placement, String positionKey) {
+        parseUuid(placement.player()).ifPresent(uuid -> {
+            Map<String, Map<String, StoredPlacement>> playerPlacements = placementsByPlayer.get(uuid);
+            if (playerPlacements == null) {
+                return;
+            }
+
+            Map<String, StoredPlacement> typePlacements = playerPlacements.get(placement.type());
+            if (typePlacements != null) {
+                typePlacements.remove(positionKey, placement);
+                if (typePlacements.isEmpty()) {
+                    playerPlacements.remove(placement.type());
+                }
+            }
+            if (playerPlacements.isEmpty()) {
+                placementsByPlayer.remove(uuid);
+            }
+        });
     }
 
     private static Optional<UUID> parseUuid(String value) {

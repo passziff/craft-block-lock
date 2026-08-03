@@ -10,12 +10,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
@@ -25,7 +27,9 @@ import com.craftblocklock.network.LockSyncPayload;
 
 import java.util.Optional;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public final class LockManager {
     private LockManager() {
@@ -59,25 +63,10 @@ public final class LockManager {
             return true;
         }
         LockSavedData data = LockSavedData.get(player.level().getServer());
-        Optional<LockSavedData.StoredPlacement> saved = data.getPlacement(player.getUUID(), typeId);
-        if (saved.isEmpty()) {
-            return true;
+        if (reconcilePlacements(player, data.getPlacements(player.getUUID(), typeId))) {
+            syncLockState(player);
         }
-
-        LockSavedData.StoredPlacement placement = saved.get();
-        Identifier dimensionId = Identifier.tryParse(placement.dimension());
-        ServerLevel level = dimensionId == null ? null : player.level().getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
-        if (level == null) {
-            data.removePlacement(player.getUUID(), typeId);
-            return true;
-        }
-
-        String currentBlock = BuiltInRegistries.BLOCK.getKey(level.getBlockState(BlockPos.of(placement.position())).getBlock()).toString();
-        if (!currentBlock.equals(placement.block())) {
-            data.removePlacement(player.getUUID(), typeId);
-            return true;
-        }
-        return false;
+        return data.getPlacements(player.getUUID(), typeId).isEmpty();
     }
 
     public static void recordPlacement(ServerPlayer player, String typeId, String blockId, ServerLevel level, BlockPos pos) {
@@ -93,21 +82,76 @@ public final class LockManager {
     public static void unlockPlacementAt(ServerLevel level, BlockPos pos, BlockState brokenState) {
         LockSavedData data = LockSavedData.get(level.getServer());
         String dimension = level.dimension().identifier().toString();
-        String blockId = BuiltInRegistries.BLOCK.getKey(brokenState.getBlock()).toString();
         Optional<LockSavedData.StoredPlacement> removed = data.removePlacementAt(dimension, pos.asLong());
-        if (removed.isPresent() && !removed.get().block().equals(blockId)) {
-            LockSavedData.StoredPlacement placement = removed.get();
-            data.recordPlacement(
-                java.util.UUID.fromString(placement.player()), placement.type(), placement.block(), placement.dimension(), placement.position()
-            );
-        }
         removed.flatMap(placement -> {
             try {
-                return Optional.ofNullable(level.getServer().getPlayerList().getPlayer(java.util.UUID.fromString(placement.player())));
+                return Optional.ofNullable(level.getServer().getPlayerList().getPlayer(UUID.fromString(placement.player())));
             } catch (IllegalArgumentException ignored) {
                 return Optional.empty();
             }
         }).ifPresent(LockManager::syncLockState);
+    }
+
+    public static boolean reconcilePlacements(ServerPlayer player) {
+        LockSavedData data = LockSavedData.get(player.level().getServer());
+        return reconcilePlacements(player, data.getPlacements(player.getUUID()));
+    }
+
+    public static void reconcileAllPlayerPlacements(MinecraftServer server) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (reconcilePlacements(player)) {
+                syncLockState(player);
+            }
+        }
+    }
+
+    private static boolean reconcilePlacements(
+        ServerPlayer player,
+        List<LockSavedData.StoredPlacement> placements
+    ) {
+        LockSavedData data = LockSavedData.get(player.level().getServer());
+        boolean changed = false;
+
+        for (LockSavedData.StoredPlacement placement : placements) {
+            Identifier dimensionId = Identifier.tryParse(placement.dimension());
+            ServerLevel level = dimensionId == null
+                ? null
+                : player.level().getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimensionId));
+            if (level == null) {
+                data.removePlacementAt(placement.dimension(), placement.position());
+                changed = true;
+                continue;
+            }
+
+            BlockPos pos = BlockPos.of(placement.position());
+            if (!level.hasChunkAt(pos)) {
+                continue;
+            }
+
+            BlockState currentState = level.getBlockState(pos);
+            String currentBlockId = BuiltInRegistries.BLOCK.getKey(currentState.getBlock()).toString();
+            if (currentBlockId.equals(placement.block())) {
+                continue;
+            }
+
+            data.removePlacementAt(placement.dimension(), placement.position());
+            changed = true;
+
+            if (currentState.getBlock().asItem() instanceof BlockItem blockItem) {
+                String currentTypeId = BuiltInRegistries.ITEM.getKey(blockItem).toString();
+                if (!CraftBlockLock.CONFIG.isBlockException(currentTypeId)) {
+                    data.recordPlacement(
+                        player.getUUID(),
+                        currentTypeId,
+                        currentBlockId,
+                        placement.dimension(),
+                        placement.position()
+                    );
+                }
+            }
+        }
+
+        return changed;
     }
 
     public static boolean mayAcquireProvenance(ServerPlayer player, ItemStack stack) {

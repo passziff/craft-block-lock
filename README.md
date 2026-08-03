@@ -21,7 +21,7 @@ Each player can craft every recipe once. The optional block rule also allows onl
 
 | Locked recipe visuals | Active block limit |
 |---|---|
-| ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block-v2.png) |
+| ![Locked recipes in the recipe book](assets/screenshots/locked-recipes.png) | ![Locked block placement message](assets/screenshots/locked-block-final.png) |
 
 ## How recipe locks work
 
@@ -42,7 +42,8 @@ The block rule tracks placements by block item type.
 - A player may have one active placement of each block type.
 - Breaking the tracked block unlocks that type.
 - Another player breaking it also releases the original owner's lock.
-- Missing blocks are checked again on the next placement attempt, which covers explosions and similar removal.
+- If a tracked block changes into another block type, the original type is released and the new type becomes locked. For example, dirt becoming grass unlocks dirt and locks grass.
+- Active placements are reconciled automatically, covering natural transformations, explosions and similar world changes.
 - Run `/cbl blocks list [page]` to see your active block locks.
 - Run `/cbl recipes list [page]` to see your locked recipe IDs.
 
