@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0-rc.1 - 2026-08-03
+
+### Added
+
+- Creative mode bypass for recipe and block locks.
+- `/cbl help` with a shorter list for regular players and the full operator command list for operators.
+- A 15-second clickable confirmation for all reset commands.
+- Optional Mod Menu 20 configuration screen for local and single-player settings.
+
+### Changed
+
+- Recipe locking is documented as one use per Minecraft recipe ID.
+- Denial sound behavior is documented under Minecraft's Players sound category.
+- GitHub artifact uploads now use `actions/upload-artifact@v7`.
+
 ## 0.2.1 - 2026-08-03
 
 ### Added

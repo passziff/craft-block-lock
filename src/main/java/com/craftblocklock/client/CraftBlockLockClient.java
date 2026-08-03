@@ -15,6 +15,7 @@ public final class CraftBlockLockClient implements ClientModInitializer {
                 payload.blockTypes(),
                 payload.recipeLockEnabled(),
                 payload.blockLockEnabled(),
+                payload.creativeModeBypass(),
                 payload.messagesEnabled(),
                 payload.soundsEnabled(),
                 payload.lockedRecipeVisualsEnabled()

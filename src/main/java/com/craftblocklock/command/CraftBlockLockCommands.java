@@ -9,20 +9,29 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import net.minecraft.ChatFormatting;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class CraftBlockLockCommands {
+    private static final long RESET_CONFIRMATION_WINDOW_MS = 15_000L;
+    private static final Map<PendingReset, Long> PENDING_RESETS = new ConcurrentHashMap<>();
+
     private CraftBlockLockCommands() {
     }
 
@@ -33,6 +42,8 @@ public final class CraftBlockLockCommands {
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("cbl")
             .executes(CraftBlockLockCommands::showStatus)
+            .then(Commands.literal("help")
+                .executes(CraftBlockLockCommands::showHelp))
             .then(Commands.literal("status")
                 .executes(CraftBlockLockCommands::showStatus))
             .then(Commands.literal("craft")
@@ -43,6 +54,10 @@ public final class CraftBlockLockCommands {
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("on").executes(context -> setBlockLock(context, true)))
                 .then(Commands.literal("off").executes(context -> setBlockLock(context, false))))
+            .then(Commands.literal("creative-bypass")
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(Commands.literal("on").executes(context -> setCreativeBypass(context, true)))
+                .then(Commands.literal("off").executes(context -> setCreativeBypass(context, false))))
             .then(Commands.literal("feedback")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("messages")
@@ -60,9 +75,15 @@ public final class CraftBlockLockCommands {
             .then(Commands.literal("reset")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.argument("player", EntityArgument.player())
-                    .then(Commands.literal("recipes").executes(context -> reset(context, ResetTarget.RECIPES)))
-                    .then(Commands.literal("blocks").executes(context -> reset(context, ResetTarget.BLOCKS)))
-                    .then(Commands.literal("all").executes(context -> reset(context, ResetTarget.ALL)))))
+                    .then(Commands.literal("recipes")
+                        .executes(context -> requestReset(context, ResetTarget.RECIPES))
+                        .then(Commands.literal("confirm").executes(context -> confirmReset(context, ResetTarget.RECIPES))))
+                    .then(Commands.literal("blocks")
+                        .executes(context -> requestReset(context, ResetTarget.BLOCKS))
+                        .then(Commands.literal("confirm").executes(context -> confirmReset(context, ResetTarget.BLOCKS))))
+                    .then(Commands.literal("all")
+                        .executes(context -> requestReset(context, ResetTarget.ALL))
+                        .then(Commands.literal("confirm").executes(context -> confirmReset(context, ResetTarget.ALL))))))
             .then(Commands.literal("exceptions")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("recipe")
@@ -91,6 +112,7 @@ public final class CraftBlockLockCommands {
         context.getSource().sendSuccess(() -> Component.literal(
             "Craft lock: " + state(CraftBlockLock.CONFIG.recipeLockEnabled)
                 + " | Block lock: " + state(CraftBlockLock.CONFIG.blockLockEnabled)
+                + " | Creative bypass: " + state(CraftBlockLock.CONFIG.creativeModeBypass)
                 + " | Messages: " + state(CraftBlockLock.CONFIG.messagesEnabled)
                 + " | Sounds: " + state(CraftBlockLock.CONFIG.denialSoundsEnabled)
                 + " | Locked recipe visuals: " + state(CraftBlockLock.CONFIG.lockedRecipeVisualsEnabled)
@@ -99,6 +121,26 @@ public final class CraftBlockLockCommands {
             "Exceptions: " + CraftBlockLock.CONFIG.recipeExceptions.size() + " recipes, "
                 + CraftBlockLock.CONFIG.blockExceptions.size() + " blocks"
         ), false);
+        return 1;
+    }
+
+    private static int showHelp(CommandContext<CommandSourceStack> context) {
+        sendHelpLine(context, "Craft & Block Lock commands:");
+        sendHelpLine(context, "/cbl status: show the current settings");
+        sendHelpLine(context, "/cbl help: show this command list");
+
+        if (!Commands.hasPermission(Commands.LEVEL_GAMEMASTERS).test(context.getSource())) {
+            sendHelpLine(context, "An operator can change settings and reset progress.");
+            return 1;
+        }
+
+        sendHelpLine(context, "/cbl craft on|off: toggle recipe locks");
+        sendHelpLine(context, "/cbl blocks on|off: toggle block locks");
+        sendHelpLine(context, "/cbl creative-bypass on|off: toggle Creative mode bypass");
+        sendHelpLine(context, "/cbl feedback <messages|sounds|visuals> on|off");
+        sendHelpLine(context, "/cbl reset <player> <recipes|blocks|all>");
+        sendHelpLine(context, "/cbl exceptions <recipe|block> <list|add|remove>");
+        sendHelpLine(context, "/cbl reload: reload craftblocklock.json");
         return 1;
     }
 
@@ -114,6 +156,13 @@ public final class CraftBlockLockCommands {
         CraftBlockLock.CONFIG.save();
         LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Block lock is now " + state(enabled) + ".");
+    }
+
+    private static int setCreativeBypass(CommandContext<CommandSourceStack> context, boolean enabled) {
+        CraftBlockLock.CONFIG.creativeModeBypass = enabled;
+        CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
+        return confirm(context, "Creative mode bypass is now " + state(enabled) + ".");
     }
 
     private static int setMessages(CommandContext<CommandSourceStack> context, boolean enabled) {
@@ -143,8 +192,42 @@ public final class CraftBlockLockCommands {
         return confirm(context, "Reloaded craftblocklock.json.");
     }
 
-    private static int reset(CommandContext<CommandSourceStack> context, ResetTarget target) throws CommandSyntaxException {
+    private static int requestReset(CommandContext<CommandSourceStack> context, ResetTarget target) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(context, "player");
+        PendingReset pending = pendingReset(context, player, target);
+        PENDING_RESETS.put(pending, System.currentTimeMillis() + RESET_CONFIRMATION_WINDOW_MS);
+
+        String command = "/cbl reset " + player.getScoreboardName() + " " + target.commandName + " confirm";
+        Component confirmButton = Component.literal("[Confirm]").withStyle(style -> style
+            .withColor(ChatFormatting.GREEN)
+            .withBold(true)
+            .withClickEvent(new ClickEvent.RunCommand(command))
+            .withHoverEvent(new HoverEvent.ShowText(Component.literal("Confirm this reset"))));
+        context.getSource().sendSuccess(() -> Component.literal(
+            "Reset " + target.label + " for " + player.getScoreboardName() + "? "
+        ).append(confirmButton).append(Component.literal(" Expires in 15 seconds.")), false);
+        return 1;
+    }
+
+    private static int confirmReset(CommandContext<CommandSourceStack> context, ResetTarget target) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(context, "player");
+        PendingReset pending = pendingReset(context, player, target);
+        Long expiresAt = PENDING_RESETS.remove(pending);
+        if (expiresAt == null || System.currentTimeMillis() > expiresAt) {
+            context.getSource().sendFailure(Component.literal(
+                "No active reset confirmation. Run the reset command again."
+            ));
+            return 0;
+        }
+
+        return performReset(context, player, target);
+    }
+
+    private static int performReset(
+        CommandContext<CommandSourceStack> context,
+        ServerPlayer player,
+        ResetTarget target
+    ) {
         LockSavedData data = LockSavedData.get(context.getSource().getServer());
         int cleared = 0;
         if (target != ResetTarget.BLOCKS) {
@@ -160,6 +243,18 @@ public final class CraftBlockLockCommands {
             "Reset " + target.label + " for " + player.getScoreboardName() + " (" + total + " locks cleared)."
         ), true);
         return cleared + 1;
+    }
+
+    private static PendingReset pendingReset(
+        CommandContext<CommandSourceStack> context,
+        ServerPlayer player,
+        ResetTarget target
+    ) {
+        return new PendingReset(context.getSource().getTextName(), player.getUUID(), target);
+    }
+
+    private static void sendHelpLine(CommandContext<CommandSourceStack> context, String line) {
+        context.getSource().sendSuccess(() -> Component.literal(line), false);
     }
 
     private static int listExceptions(CommandContext<CommandSourceStack> context, boolean recipes) {
@@ -258,14 +353,19 @@ public final class CraftBlockLockCommands {
     }
 
     private enum ResetTarget {
-        RECIPES("recipe locks"),
-        BLOCKS("block locks"),
-        ALL("all locks");
+        RECIPES("recipes", "recipe locks"),
+        BLOCKS("blocks", "block locks"),
+        ALL("all", "all locks");
 
+        private final String commandName;
         private final String label;
 
-        ResetTarget(String label) {
+        ResetTarget(String commandName, String label) {
+            this.commandName = commandName;
             this.label = label;
         }
+    }
+
+    private record PendingReset(String requester, UUID player, ResetTarget target) {
     }
 }

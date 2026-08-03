@@ -32,7 +32,7 @@ public final class LockManager {
     }
 
     public static boolean isRecipeLocked(ServerPlayer player, String recipeKey) {
-        if (CraftBlockLock.CONFIG.isRecipeException(recipeKey)) {
+        if (bypassesLocks(player) || CraftBlockLock.CONFIG.isRecipeException(recipeKey)) {
             return false;
         }
         return LockSavedData.get(player.level().getServer()).isRecipeLocked(player.getUUID(), recipeKey);
@@ -43,7 +43,7 @@ public final class LockManager {
     }
 
     public static void lockRecipe(ServerPlayer player, String recipeKey) {
-        if (CraftBlockLock.CONFIG.isRecipeException(recipeKey)) {
+        if (bypassesLocks(player) || CraftBlockLock.CONFIG.isRecipeException(recipeKey)) {
             return;
         }
         LockSavedData.get(player.level().getServer()).lockRecipe(player.getUUID(), recipeKey);
@@ -55,7 +55,7 @@ public final class LockManager {
     }
 
     public static boolean mayPlace(ServerPlayer player, String typeId) {
-        if (CraftBlockLock.CONFIG.isBlockException(typeId)) {
+        if (bypassesLocks(player) || CraftBlockLock.CONFIG.isBlockException(typeId)) {
             return true;
         }
         LockSavedData data = LockSavedData.get(player.level().getServer());
@@ -81,7 +81,7 @@ public final class LockManager {
     }
 
     public static void recordPlacement(ServerPlayer player, String typeId, String blockId, ServerLevel level, BlockPos pos) {
-        if (CraftBlockLock.CONFIG.isBlockException(typeId)) {
+        if (bypassesLocks(player) || CraftBlockLock.CONFIG.isBlockException(typeId)) {
             return;
         }
         LockSavedData.get(player.level().getServer()).recordPlacement(
@@ -111,6 +111,9 @@ public final class LockManager {
     }
 
     public static boolean mayAcquireProvenance(ServerPlayer player, ItemStack stack) {
+        if (bypassesLocks(player)) {
+            return true;
+        }
         return OperationKeys.read(stack).map(key -> !isRecipeLocked(player, key)).orElse(true);
     }
 
@@ -121,6 +124,13 @@ public final class LockManager {
     }
 
     public static void consumeProvenance(ServerPlayer player, ItemStack stack) {
+        if (bypassesLocks(player)) {
+            OperationKeys.readProvenance(stack).ifPresent(provenance -> {
+                OperationKeys.clear(stack);
+                clearMatchingProvenance(player.getInventory(), provenance);
+            });
+            return;
+        }
         OperationKeys.readProvenance(stack).ifPresent(provenance -> {
             lockRecipe(player, provenance.recipeKey());
             OperationKeys.clear(stack);
@@ -172,6 +182,7 @@ public final class LockManager {
                 .collect(java.util.stream.Collectors.toSet()),
             CraftBlockLock.CONFIG.recipeLockEnabled,
             CraftBlockLock.CONFIG.blockLockEnabled,
+            CraftBlockLock.CONFIG.creativeModeBypass,
             CraftBlockLock.CONFIG.messagesEnabled,
             CraftBlockLock.CONFIG.denialSoundsEnabled,
             CraftBlockLock.CONFIG.lockedRecipeVisualsEnabled
@@ -184,6 +195,10 @@ public final class LockManager {
 
     public static String recipeKey(RecipeHolder<?> recipe) {
         return recipe.id().identifier().toString();
+    }
+
+    public static boolean bypassesLocks(ServerPlayer player) {
+        return CraftBlockLock.CONFIG.creativeModeBypass && player.isCreative();
     }
 
     private static void clearMatchingProvenance(Inventory inventory, OperationKeys.Provenance provenance) {

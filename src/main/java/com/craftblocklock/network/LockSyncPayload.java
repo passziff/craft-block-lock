@@ -15,6 +15,7 @@ public record LockSyncPayload(
     Set<String> blockTypes,
     boolean recipeLockEnabled,
     boolean blockLockEnabled,
+    boolean creativeModeBypass,
     boolean messagesEnabled,
     boolean soundsEnabled,
     boolean lockedRecipeVisualsEnabled
@@ -34,6 +35,7 @@ public record LockSyncPayload(
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
+                buffer.readBoolean(),
                 buffer.readBoolean()
             );
         }
@@ -45,6 +47,7 @@ public record LockSyncPayload(
             writeSet(buffer, payload.blockTypes);
             buffer.writeBoolean(payload.recipeLockEnabled);
             buffer.writeBoolean(payload.blockLockEnabled);
+            buffer.writeBoolean(payload.creativeModeBypass);
             buffer.writeBoolean(payload.messagesEnabled);
             buffer.writeBoolean(payload.soundsEnabled);
             buffer.writeBoolean(payload.lockedRecipeVisualsEnabled);

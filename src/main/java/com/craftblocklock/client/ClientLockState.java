@@ -2,6 +2,7 @@ package com.craftblocklock.client;
 
 import java.util.Set;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 
 public final class ClientLockState {
@@ -10,6 +11,7 @@ public final class ClientLockState {
     private static Set<Integer> recipeDisplayIds = Set.of();
     private static boolean recipeLockEnabled;
     private static boolean blockLockEnabled;
+    private static boolean creativeModeBypass;
     private static boolean messagesEnabled;
     private static boolean soundsEnabled;
     private static boolean lockedRecipeVisualsEnabled;
@@ -18,15 +20,15 @@ public final class ClientLockState {
     }
 
     public static boolean isBlockLocked(String blockType) {
-        return blockLockEnabled && blockTypes.contains(blockType);
+        return locksApply() && blockLockEnabled && blockTypes.contains(blockType);
     }
 
     public static boolean isRecipeLocked(String recipeKey) {
-        return recipeLockEnabled && recipeKeys.contains(recipeKey);
+        return locksApply() && recipeLockEnabled && recipeKeys.contains(recipeKey);
     }
 
     public static boolean isRecipeDisplayLocked(RecipeDisplayId displayId) {
-        return recipeLockEnabled && recipeDisplayIds.contains(displayId.index());
+        return locksApply() && recipeLockEnabled && recipeDisplayIds.contains(displayId.index());
     }
 
     public static boolean messagesEnabled() {
@@ -47,6 +49,7 @@ public final class ClientLockState {
         Set<String> blocks,
         boolean recipeEnabled,
         boolean blockEnabled,
+        boolean creativeBypass,
         boolean messages,
         boolean sounds,
         boolean visuals
@@ -56,6 +59,7 @@ public final class ClientLockState {
         blockTypes = Set.copyOf(blocks);
         recipeLockEnabled = recipeEnabled;
         blockLockEnabled = blockEnabled;
+        creativeModeBypass = creativeBypass;
         messagesEnabled = messages;
         soundsEnabled = sounds;
         lockedRecipeVisualsEnabled = visuals;
@@ -67,8 +71,15 @@ public final class ClientLockState {
         recipeDisplayIds = Set.of();
         recipeLockEnabled = false;
         blockLockEnabled = false;
+        creativeModeBypass = false;
         messagesEnabled = false;
         soundsEnabled = false;
         lockedRecipeVisualsEnabled = false;
+    }
+
+    private static boolean locksApply() {
+        return !creativeModeBypass
+            || Minecraft.getInstance().player == null
+            || !Minecraft.getInstance().player.isCreative();
     }
 }

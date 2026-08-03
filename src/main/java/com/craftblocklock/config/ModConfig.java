@@ -20,6 +20,7 @@ public final class ModConfig {
 
     public boolean recipeLockEnabled = true;
     public boolean blockLockEnabled = true;
+    public boolean creativeModeBypass = true;
     public boolean messagesEnabled = true;
     public boolean denialSoundsEnabled = true;
     public boolean lockedRecipeVisualsEnabled = true;
