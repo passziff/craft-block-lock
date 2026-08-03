@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "craftblocklock",
+  "version": "${version}",
+  "name": "Craft & Block Lock",
+  "description": "Per-player one-time recipe crafting and one-active-placement-per-block-type rules.",
+  "authors": [
+    "Craft & Block Lock contributors"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.craftblocklock.CraftBlockLock"
+    ]
+  },
+  "mixins": [
+    "craftblocklock.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
