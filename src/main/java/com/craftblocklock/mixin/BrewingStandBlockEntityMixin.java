@@ -1,7 +1,10 @@
 package com.craftblocklock.mixin;
+
 import com.craftblocklock.CraftBlockLock;
+import com.craftblocklock.lock.BrewingStandLockAccess;
 import com.craftblocklock.lock.LockManager;
 import com.craftblocklock.lock.OperationKeys;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.server.level.ServerLevel;
@@ -12,6 +15,8 @@ import net.minecraft.world.item.alchemy.PotionBrewing;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -19,44 +24,92 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 @Mixin(BrewingStandBlockEntity.class)
-abstract class BrewingStandBlockEntityMixin {
+abstract class BrewingStandBlockEntityMixin implements BrewingStandLockAccess {
+    @Unique
+    private static final String craftblocklock$brewerTag = "craftblocklock_brewer";
+
     @Unique
     private static final int craftblocklock$ingredientSlot = 3;
-    @Unique
-    private static final int craftblocklock$firstBottleSlot = 0;
+
     @Unique
     private static final int craftblocklock$bottleSlotCount = 3;
-    @Unique
-    private static final ThreadLocal<BrewingTickContext> craftblocklock$tick = new ThreadLocal<>();
+
     @Unique
     private static final ThreadLocal<BrewingBatchContext> craftblocklock$batch = new ThreadLocal<>();
+
+    @Unique
+    private UUID craftblocklock$brewer;
+
+    @Unique
+    private String craftblocklock$lastDeniedOperation;
+
+    @Unique
+    private long craftblocklock$lastDeniedGameTime = Long.MIN_VALUE;
 
     @Shadow
     private static boolean isBrewable(PotionBrewing brewing, NonNullList<ItemStack> items) {
         throw new AssertionError();
     }
 
-    @Inject(method = "serverTick", at = @At("HEAD"))
-    private static void craftblocklock$beginBrewingTick(
-        Level level,
-        BlockPos pos,
-        BlockState state,
-        BrewingStandBlockEntity stand,
-        CallbackInfo callback
-    ) {
-        craftblocklock$tick.remove();
-        if (CraftBlockLock.CONFIG.recipeLockEnabled) {
-            craftblocklock$tick.set(new BrewingTickContext(
-                level,
-                pos.immutable(),
-                craftblocklock$findPlayerUsing(level, stand)
-            ));
+    @Override
+    public void craftblocklock$setBrewer(UUID playerId) {
+        if (Objects.equals(craftblocklock$brewer, playerId)) {
+            return;
         }
+        craftblocklock$brewer = playerId;
+        craftblocklock$clearDeniedOperation();
+        ((BrewingStandBlockEntity) (Object) this).setChanged();
+    }
+
+    @Override
+    public UUID craftblocklock$getBrewer() {
+        return craftblocklock$brewer;
+    }
+
+    @Override
+    public boolean craftblocklock$shouldNotifyDenied(String operation, long gameTime) {
+        if (!operation.equals(craftblocklock$lastDeniedOperation)
+            || craftblocklock$lastDeniedGameTime == Long.MIN_VALUE
+            || gameTime - craftblocklock$lastDeniedGameTime >= 40L) {
+            craftblocklock$lastDeniedOperation = operation;
+            craftblocklock$lastDeniedGameTime = gameTime;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void craftblocklock$clearDeniedOperation() {
+        craftblocklock$lastDeniedOperation = null;
+        craftblocklock$lastDeniedGameTime = Long.MIN_VALUE;
+    }
+
+    @Inject(method = "saveAdditional", at = @At("TAIL"))
+    private void craftblocklock$saveBrewer(ValueOutput output, CallbackInfo callback) {
+        if (craftblocklock$brewer != null) {
+            output.store(craftblocklock$brewerTag, Codec.STRING, craftblocklock$brewer.toString());
+        }
+    }
+
+    @Inject(method = "loadAdditional", at = @At("TAIL"))
+    private void craftblocklock$loadBrewer(ValueInput input, CallbackInfo callback) {
+        craftblocklock$brewer = input.read(craftblocklock$brewerTag, Codec.STRING)
+            .flatMap(value -> {
+                try {
+                    return java.util.Optional.of(UUID.fromString(value));
+                } catch (IllegalArgumentException ignored) {
+                    return java.util.Optional.empty();
+                }
+            })
+            .orElse(null);
+        craftblocklock$clearDeniedOperation();
     }
 
     @Redirect(
@@ -68,49 +121,57 @@ abstract class BrewingStandBlockEntityMixin {
     )
     private static boolean craftblocklock$denyLockedBrew(
         PotionBrewing brewing,
-        NonNullList<ItemStack> items
+        NonNullList<ItemStack> items,
+        Level level,
+        BlockPos pos,
+        BlockState state,
+        BrewingStandBlockEntity stand
     ) {
         boolean brewable = isBrewable(brewing, items);
         if (!brewable || !CraftBlockLock.CONFIG.recipeLockEnabled) {
+            ((BrewingStandLockAccess) stand).craftblocklock$clearDeniedOperation();
             return brewable;
         }
 
-        BrewingTickContext context = craftblocklock$tick.get();
-        if (context == null || context.player == null) {
+        BrewingStandLockAccess access = (BrewingStandLockAccess) stand;
+        UUID brewerId = access.craftblocklock$getBrewer();
+        ServerPlayer player = craftblocklock$findBrewer(level, brewerId);
+        if (player == null && brewerId == null) {
+            player = craftblocklock$findPlayerUsingStand(level, stand);
+            if (player != null) {
+                access.craftblocklock$setBrewer(player.getUUID());
+            }
+        }
+        if (player == null) {
             return true;
         }
 
         ItemStack ingredient = items.get(craftblocklock$ingredientSlot);
-        for (int slot = craftblocklock$firstBottleSlot;
-             slot < craftblocklock$bottleSlotCount;
-             slot++) {
+        for (int slot = 0; slot < craftblocklock$bottleSlotCount; slot++) {
             ItemStack input = items.get(slot);
             if (input.isEmpty()) {
                 continue;
             }
 
             ItemStack result = brewing.mix(ingredient, input);
-            if (!ItemStack.isSameItemSameComponents(input, result)
-                && LockManager.isRecipeLocked(
-                    context.player,
-                    OperationKeys.brewing(ingredient, input, result)
-                )) {
-                return false;
+            if (ItemStack.isSameItemSameComponents(input, result)) {
+                continue;
             }
+
+            String operation = OperationKeys.brewing(ingredient, input, result);
+            if (!LockManager.isRecipeLocked(player, operation)) {
+                continue;
+            }
+
+            if (craftblocklock$isUsingStand(player, stand)
+                && access.craftblocklock$shouldNotifyDenied(operation, level.getGameTime())) {
+                LockManager.showRecipeLocked(player);
+            }
+            return false;
         }
 
+        access.craftblocklock$clearDeniedOperation();
         return true;
-    }
-
-    @Inject(method = "serverTick", at = @At("RETURN"))
-    private static void craftblocklock$finishBrewingTick(
-        Level level,
-        BlockPos pos,
-        BlockState state,
-        BrewingStandBlockEntity stand,
-        CallbackInfo callback
-    ) {
-        craftblocklock$tick.remove();
     }
 
     @Inject(method = "doBrew", at = @At("HEAD"))
@@ -125,12 +186,19 @@ abstract class BrewingStandBlockEntityMixin {
             return;
         }
 
-        BrewingTickContext tickContext = craftblocklock$tick.get();
-        ServerPlayer player = tickContext != null
-            && tickContext.level == level
-            && tickContext.pos.equals(pos)
-            ? tickContext.player
-            : craftblocklock$findPlayerUsing(level, pos);
+        ServerPlayer player = null;
+        if (level.getBlockEntity(pos) instanceof BrewingStandBlockEntity stand) {
+            BrewingStandLockAccess access = (BrewingStandLockAccess) stand;
+            UUID brewer = access.craftblocklock$getBrewer();
+            player = craftblocklock$findBrewer(level, brewer);
+            if (player == null && brewer == null) {
+                player = craftblocklock$findPlayerUsingStand(level, stand);
+                if (player != null) {
+                    access.craftblocklock$setBrewer(player.getUUID());
+                }
+            }
+        }
+
         craftblocklock$batch.set(new BrewingBatchContext(
             UUID.randomUUID().toString(),
             player
@@ -187,7 +255,15 @@ abstract class BrewingStandBlockEntityMixin {
     }
 
     @Unique
-    private static ServerPlayer craftblocklock$findPlayerUsing(
+    private static ServerPlayer craftblocklock$findBrewer(Level level, UUID playerId) {
+        if (playerId == null || !(level instanceof ServerLevel serverLevel)) {
+            return null;
+        }
+        return serverLevel.getServer().getPlayerList().getPlayer(playerId);
+    }
+
+    @Unique
+    private static ServerPlayer craftblocklock$findPlayerUsingStand(
         Level level,
         BrewingStandBlockEntity stand
     ) {
@@ -195,8 +271,7 @@ abstract class BrewingStandBlockEntityMixin {
             return null;
         }
         for (ServerPlayer player : serverLevel.players()) {
-            if (player.containerMenu instanceof BrewingStandMenu menu
-                && menu.getSlot(0).container == stand) {
+            if (craftblocklock$isUsingStand(player, stand)) {
                 return player;
             }
         }
@@ -204,31 +279,12 @@ abstract class BrewingStandBlockEntityMixin {
     }
 
     @Unique
-    private static ServerPlayer craftblocklock$findPlayerUsing(Level level, BlockPos pos) {
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return null;
-        }
-        for (ServerPlayer player : serverLevel.players()) {
-            if (player.containerMenu instanceof BrewingStandMenu menu
-                && menu.getSlot(0).container instanceof BrewingStandBlockEntity stand
-                && stand.getBlockPos().equals(pos)) {
-                return player;
-            }
-        }
-        return null;
-    }
-
-    @Unique
-    private static final class BrewingTickContext {
-        private final Level level;
-        private final BlockPos pos;
-        private final ServerPlayer player;
-
-        private BrewingTickContext(Level level, BlockPos pos, ServerPlayer player) {
-            this.level = level;
-            this.pos = pos;
-            this.player = player;
-        }
+    private static boolean craftblocklock$isUsingStand(
+        ServerPlayer player,
+        BrewingStandBlockEntity stand
+    ) {
+        return player.containerMenu instanceof BrewingStandMenu menu
+            && menu.getSlot(0).container == stand;
     }
 
     @Unique
