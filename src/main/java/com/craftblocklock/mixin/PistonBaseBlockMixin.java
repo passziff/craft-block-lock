@@ -1,5 +1,4 @@
 package com.craftblocklock.mixin;
-
 import com.craftblocklock.lock.LockManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -10,10 +9,18 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
 @Mixin(PistonBaseBlock.class)
 abstract class PistonBaseBlockMixin {
-    @Inject(method = "moveBlocks", at = @At("HEAD"))
+    @Inject(
+        method = "moveBlocks",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/level/block/piston/PistonStructureResolver;resolve()Z",
+            ordinal = 0,
+            shift = At.Shift.BEFORE
+        ),
+        require = 1
+    )
     private void craftblocklock$beginMove(
         Level level,
         BlockPos pistonPos,
@@ -25,7 +32,6 @@ abstract class PistonBaseBlockMixin {
             LockManager.beginPistonMove(serverLevel, pistonPos, direction, extending);
         }
     }
-
     @Inject(method = "moveBlocks", at = @At("RETURN"))
     private void craftblocklock$finishMove(
         Level level,
