@@ -43,7 +43,9 @@ The block rule tracks placements by block item type.
 - Breaking the tracked block unlocks that type.
 - Another player breaking it also releases the original owner's lock.
 - If a tracked block changes into another block type, the original type is released and the new type becomes locked. For example, dirt becoming grass unlocks dirt and locks grass.
-- Active placements are reconciled automatically, covering natural transformations, explosions and similar world changes.
+- Falling blocks remain locked while airborne and transfer their lock to the block where they land.
+- Pistons transfer tracked placements to their new positions, including blocks moved by slime and honey.
+- World changes are handled immediately, with a small background reconciliation pass as a safety net for unusual modded changes.
 - Run `/cbl blocks list [page]` to see your active block locks.
 - Run `/cbl recipes list [page]` to see your locked recipe IDs.
 

@@ -9,8 +9,12 @@
     "BrewingStandBlockEntityMixin",
     "CampfireBlockEntityMixin",
     "CrafterBlockMixin",
+    "EntityMixin",
+    "FallingBlockEntityMixin",
     "ItemEntityMixin",
     "ItemCombinerMenuMixin",
+    "LevelMixin",
+    "PistonBaseBlockMixin",
     "RecipeCraftingHolderMixin",
     "ResultContainerMixin",
     "SlotMixin"

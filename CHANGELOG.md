@@ -15,6 +15,8 @@
 - Active locks now transfer when a tracked block changes type, such as dirt becoming grass.
 - World changes are reconciled before stale client feedback can affect the next placement.
 - Multiple transformed placements of the same resulting block type remain tracked correctly.
+- Falling blocks keep their lock while moving, transfer it to the landing position and release it if the entity is destroyed.
+- Piston pushes and pulls transfer tracked placements, including slime and honey chains; piston-destroyed blocks are released.
 - The locked-block README screenshot now shows the complete message and HUD.
 
 ### Changed
@@ -23,6 +25,8 @@
 - Block-lock feedback now uses a shorter message.
 - The displayed author name is now passo.
 - The README is shorter, clearer and includes the current multiplayer testing status.
+- Block tracking now reacts to actual world changes instead of scanning every placement every server tick.
+- A capped background reconciliation pass remains as a low-cost safety net for unusual or modded changes.
 
 ## 1.0.0-rc.1 - 2026-08-03
 
