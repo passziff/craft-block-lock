@@ -1,5 +1,6 @@
 package com.craftblocklock;
 
+import com.craftblocklock.command.CraftBlockLockCommands;
 import com.craftblocklock.config.ModConfig;
 import com.craftblocklock.lock.LockManager;
 import net.fabricmc.api.ModInitializer;
@@ -21,6 +22,11 @@ public final class CraftBlockLock implements ModInitializer {
                 LockManager.unlockPlacementAt(serverLevel, pos, state);
             }
         });
+        CraftBlockLockCommands.register();
         LOGGER.info("Craft & Block Lock initialized.");
+    }
+
+    public static void reloadConfig() {
+        CONFIG = ModConfig.load();
     }
 }

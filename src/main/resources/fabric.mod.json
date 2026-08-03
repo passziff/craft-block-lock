@@ -5,8 +5,12 @@
   "name": "Craft & Block Lock",
   "description": "Per-player one-time recipe crafting and one-active-placement-per-block-type rules.",
   "authors": [
-    "Craft & Block Lock contributors"
+    "passziff"
   ],
+  "contact": {
+    "sources": "https://github.com/passziff/craft-block-lock",
+    "issues": "https://github.com/passziff/craft-block-lock/issues"
+  },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {

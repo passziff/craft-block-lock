@@ -2,7 +2,6 @@ package com.craftblocklock.mixin;
 
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.lock.LockManager;
-import com.craftblocklock.lock.OperationKeys;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.CrafterBlock;
@@ -25,7 +24,7 @@ abstract class CrafterBlockMixin {
         if (CraftBlockLock.CONFIG.recipeLockEnabled) {
             ItemStack output = args.get(3);
             RecipeHolder<?> recipe = args.get(5);
-            OperationKeys.mark(output, LockManager.recipeKey(recipe));
+            LockManager.markOperation(output, LockManager.recipeKey(recipe));
         }
     }
 }

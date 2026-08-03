@@ -22,7 +22,7 @@ abstract class AbstractFurnaceBlockEntityMixin {
         ItemStack burnResult,
         CallbackInfoReturnable<Boolean> callback
     ) {
-        if (CraftBlockLock.CONFIG.recipeLockEnabled && !items.get(2).isEmpty()) {
+        if (CraftBlockLock.CONFIG.recipeLockEnabled && OperationKeys.read(items.get(2)).isPresent()) {
             callback.setReturnValue(false);
         }
     }
@@ -31,7 +31,7 @@ abstract class AbstractFurnaceBlockEntityMixin {
     private void craftblocklock$tagFurnaceOutput(RecipeHolder<?> recipe, CallbackInfo callback) {
         if (CraftBlockLock.CONFIG.recipeLockEnabled && recipe != null) {
             AbstractFurnaceBlockEntity furnace = (AbstractFurnaceBlockEntity) (Object) this;
-            OperationKeys.mark(furnace.getItem(2), LockManager.recipeKey(recipe));
+            LockManager.markOperation(furnace.getItem(2), LockManager.recipeKey(recipe));
         }
     }
 }

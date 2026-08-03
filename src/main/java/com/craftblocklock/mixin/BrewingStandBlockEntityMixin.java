@@ -1,6 +1,7 @@
 package com.craftblocklock.mixin;
 
 import com.craftblocklock.CraftBlockLock;
+import com.craftblocklock.lock.LockManager;
 import com.craftblocklock.lock.OperationKeys;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.alchemy.PotionBrewing;
@@ -25,7 +26,7 @@ abstract class BrewingStandBlockEntityMixin {
     ) {
         ItemStack result = brewing.mix(ingredient, input);
         if (CraftBlockLock.CONFIG.recipeLockEnabled) {
-            OperationKeys.mark(result, OperationKeys.brewing(ingredient, input, result));
+            LockManager.markOperation(result, OperationKeys.brewing(ingredient, input, result));
         }
         return result;
     }

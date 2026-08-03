@@ -2,7 +2,6 @@ package com.craftblocklock.mixin;
 
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.lock.LockManager;
-import com.craftblocklock.lock.OperationKeys;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CampfireCookingRecipe;
@@ -52,7 +51,7 @@ abstract class CampfireBlockEntityMixin {
     private static ItemStack craftblocklock$tagCampfireOutput(ItemStack output) {
         RecipeHolder<?> recipe = CRAFTBLOCKLOCK_RECIPE.get();
         if (CraftBlockLock.CONFIG.recipeLockEnabled && recipe != null) {
-            OperationKeys.mark(output, LockManager.recipeKey(recipe));
+            LockManager.markOperation(output, LockManager.recipeKey(recipe));
         }
         return output;
     }

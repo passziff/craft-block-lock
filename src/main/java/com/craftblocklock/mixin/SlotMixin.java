@@ -2,7 +2,6 @@ package com.craftblocklock.mixin;
 
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.lock.LockManager;
-import com.craftblocklock.lock.OperationKeys;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;

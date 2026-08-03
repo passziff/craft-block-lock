@@ -128,6 +128,27 @@ public final class LockSavedData extends SavedData {
         }
     }
 
+    public int clearRecipes(UUID playerId) {
+        Set<String> removed = craftedRecipes.remove(playerId);
+        if (removed == null) {
+            return 0;
+        }
+        setDirty();
+        return removed.size();
+    }
+
+    public int clearPlacements(UUID playerId) {
+        Map<String, StoredPlacement> removed = placementsByPlayer.remove(playerId);
+        if (removed == null) {
+            return 0;
+        }
+        removed.values().forEach(placement ->
+            placementsByPosition.remove(positionKey(placement.dimension(), placement.position()))
+        );
+        setDirty();
+        return removed.size();
+    }
+
     private Map<String, List<String>> serializedRecipes() {
         Map<String, List<String>> serialized = new HashMap<>();
         craftedRecipes.forEach((uuid, recipes) -> serialized.put(uuid.toString(), new ArrayList<>(recipes)));
