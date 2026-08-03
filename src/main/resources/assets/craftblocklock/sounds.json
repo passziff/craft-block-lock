@@ -1,0 +1,8 @@
+{
+  "deny": {
+    "subtitle": "subtitles.craftblocklock.deny",
+    "sounds": [
+      "craftblocklock:deny"
+    ]
+  }
+}

@@ -13,7 +13,7 @@ Craft & Block Lock is a server-authoritative Fabric mod for Minecraft Java Editi
 - Breaking that tracked block unlocks its type, so the same player can place it again.
 - Another player breaking the tracked block also releases the original owner's lock.
 - Missing tracked blocks are reconciled when the owner next tries to place that type, covering explosions and other indirect removal.
-- All enforcement is server-side. Every connecting player follows the same rules.
+- The server remains authoritative, while a synchronized client check prevents visual ghost placements.
 
 Blocked actions display a short action-bar message and play a denial sound by default. Both forms of feedback can be disabled independently.
 
@@ -33,13 +33,13 @@ Blocked actions display a short action-bar message and play a denial sound by de
 
 Recipe-backed stations are keyed by recipe identifier. Brewing transformations use a stable key derived from the input item and potion, ingredient, and output item and potion. Automated and delayed outputs carry a hidden, unique provenance marker until a player acquires them, preventing separate operations from merging to bypass the lock.
 
-Vanilla stations that do not use recipes—anvils, enchanting tables, grindstones, looms, and cartography tables—are not locked in version 0.2.0. They require action-specific keys and are planned as a separate update so their rules can be tested independently.
+Vanilla utility stations that do not use recipes—anvils, enchanting tables, grindstones, looms, and cartography tables—remain freely usable by design.
 
 ## Installation
 
 1. Install Fabric Loader 0.19.3 or newer for Minecraft 26.2.
 2. Install Fabric API 0.156.0+26.2 or a compatible newer 26.2 build.
-3. Put `craft-block-lock-0.2.0.jar` in the server's `mods` folder. Install it locally as well for single-player or LAN worlds.
+3. Put `craft-block-lock-0.2.1.jar` in the `mods` folder on both the server and every connecting client. For single-player, install it locally as usual.
 4. Start Minecraft with Java 25.
 
 ## Commands
@@ -95,6 +95,8 @@ Java 25 and Gradle 9.5 are required. The included Gradle wrapper can build the p
 
 The installable JAR is written to `build/libs/`.
 
+Every push is also compiled by GitHub Actions. The build page provides the generated JARs as a downloadable artifact, making it possible to test a commit before publishing a release.
+
 ## License
 
-MIT
+The source code is available under the MIT License. See `THIRD_PARTY_NOTICES.md` for the denial sound attribution and license information.

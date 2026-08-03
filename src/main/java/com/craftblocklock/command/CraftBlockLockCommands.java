@@ -100,29 +100,34 @@ public final class CraftBlockLockCommands {
     private static int setCraftLock(CommandContext<CommandSourceStack> context, boolean enabled) {
         CraftBlockLock.CONFIG.recipeLockEnabled = enabled;
         CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Craft lock is now " + state(enabled) + ".");
     }
 
     private static int setBlockLock(CommandContext<CommandSourceStack> context, boolean enabled) {
         CraftBlockLock.CONFIG.blockLockEnabled = enabled;
         CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Block lock is now " + state(enabled) + ".");
     }
 
     private static int setMessages(CommandContext<CommandSourceStack> context, boolean enabled) {
         CraftBlockLock.CONFIG.messagesEnabled = enabled;
         CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Denial messages are now " + state(enabled) + ".");
     }
 
     private static int setSounds(CommandContext<CommandSourceStack> context, boolean enabled) {
         CraftBlockLock.CONFIG.denialSoundsEnabled = enabled;
         CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Denial sounds are now " + state(enabled) + ".");
     }
 
     private static int reload(CommandContext<CommandSourceStack> context) {
         CraftBlockLock.reloadConfig();
+        LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Reloaded craftblocklock.json.");
     }
 
@@ -136,6 +141,7 @@ public final class CraftBlockLockCommands {
         if (target != ResetTarget.RECIPES) {
             cleared += data.clearPlacements(player.getUUID());
         }
+        LockManager.syncLockState(player);
 
         int total = cleared;
         context.getSource().sendSuccess(() -> Component.literal(
@@ -159,6 +165,9 @@ public final class CraftBlockLockCommands {
         boolean changed = add
             ? CraftBlockLock.CONFIG.addRecipeException(key)
             : CraftBlockLock.CONFIG.removeRecipeException(key);
+        if (changed) {
+            LockManager.syncAllPlayers(context.getSource().getServer());
+        }
         return exceptionResult(context, "recipe", key, add, changed);
     }
 
@@ -167,6 +176,9 @@ public final class CraftBlockLockCommands {
         boolean changed = add
             ? CraftBlockLock.CONFIG.addBlockException(key)
             : CraftBlockLock.CONFIG.removeBlockException(key);
+        if (changed) {
+            LockManager.syncAllPlayers(context.getSource().getServer());
+        }
         return exceptionResult(context, "block", key, add, changed);
     }
 

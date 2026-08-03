@@ -12,13 +12,14 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import com.craftblocklock.network.LockSyncPayload;
 
 import java.util.Optional;
 
@@ -42,6 +43,7 @@ public final class LockManager {
             return;
         }
         LockSavedData.get(player.level().getServer()).lockRecipe(player.getUUID(), recipeKey);
+        syncLockState(player);
     }
 
     public static void lockRecipe(ServerPlayer player, RecipeHolder<?> recipe) {
@@ -81,6 +83,7 @@ public final class LockManager {
         LockSavedData.get(player.level().getServer()).recordPlacement(
             player.getUUID(), typeId, blockId, level.dimension().identifier().toString(), pos.asLong()
         );
+        syncLockState(player);
     }
 
     public static void unlockPlacementAt(ServerLevel level, BlockPos pos, BlockState brokenState) {
@@ -94,6 +97,13 @@ public final class LockManager {
                 java.util.UUID.fromString(placement.player()), placement.type(), placement.block(), placement.dimension(), placement.position()
             );
         }
+        removed.flatMap(placement -> {
+            try {
+                return Optional.ofNullable(level.getServer().getPlayerList().getPlayer(java.util.UUID.fromString(placement.player())));
+            } catch (IllegalArgumentException ignored) {
+                return Optional.empty();
+            }
+        }).ifPresent(LockManager::syncLockState);
     }
 
     public static boolean mayAcquireProvenance(ServerPlayer player, ItemStack stack) {
@@ -119,7 +129,7 @@ public final class LockManager {
             player.sendOverlayMessage(Component.literal("Recipe locked: you have already crafted this recipe."));
         }
         if (CraftBlockLock.CONFIG.denialSoundsEnabled) {
-            sendDenialSound(player, SoundEvents.CHEST_LOCKED, 0.8F, 1.0F);
+            sendDenialSound(player, CraftBlockLock.DENY_SOUND, 0.8F, 1.0F);
         }
     }
 
@@ -130,8 +140,28 @@ public final class LockManager {
             );
         }
         if (CraftBlockLock.CONFIG.denialSoundsEnabled) {
-            sendDenialSound(player, SoundEvents.DISPENSER_FAIL, 0.8F, 0.8F);
+            sendDenialSound(player, CraftBlockLock.DENY_SOUND, 0.8F, 1.0F);
         }
+    }
+
+    public static void syncLockState(ServerPlayer player) {
+        LockSavedData data = LockSavedData.get(player.level().getServer());
+        ServerPlayNetworking.send(player, new LockSyncPayload(
+            data.getCraftedRecipes(player.getUUID()).stream()
+                .filter(key -> !CraftBlockLock.CONFIG.isRecipeException(key))
+                .collect(java.util.stream.Collectors.toSet()),
+            data.getPlacedTypes(player.getUUID()).stream()
+                .filter(key -> !CraftBlockLock.CONFIG.isBlockException(key))
+                .collect(java.util.stream.Collectors.toSet()),
+            CraftBlockLock.CONFIG.recipeLockEnabled,
+            CraftBlockLock.CONFIG.blockLockEnabled,
+            CraftBlockLock.CONFIG.messagesEnabled,
+            CraftBlockLock.CONFIG.denialSoundsEnabled
+        ));
+    }
+
+    public static void syncAllPlayers(net.minecraft.server.MinecraftServer server) {
+        server.getPlayerList().getPlayers().forEach(LockManager::syncLockState);
     }
 
     public static String recipeKey(RecipeHolder<?> recipe) {

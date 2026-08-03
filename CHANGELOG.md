@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 - 2026-08-03
+
+### Added
+
+- Client-side block-lock synchronization to stop predicted duplicate placements before they appear.
+- A custom denial sound for blocked crafting and placement.
+
+### Changed
+
+- Utility stations such as anvils and enchanting tables remain freely usable by design.
+- Resetting a player's block locks now updates that player's client immediately.
+
 ## 0.2.0 - 2026-08-03
 
 ### Added

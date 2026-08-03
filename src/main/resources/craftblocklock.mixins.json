@@ -14,6 +14,9 @@
     "RecipeCraftingHolderMixin",
     "SlotMixin"
   ],
+  "client": [
+    "client.ClientBlockItemMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

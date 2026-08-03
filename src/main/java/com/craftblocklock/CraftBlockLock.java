@@ -3,20 +3,34 @@ package com.craftblocklock;
 import com.craftblocklock.command.CraftBlockLockCommands;
 import com.craftblocklock.config.ModConfig;
 import com.craftblocklock.lock.LockManager;
+import com.craftblocklock.network.LockSyncPayload;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class CraftBlockLock implements ModInitializer {
     public static final String MOD_ID = "craftblocklock";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final Identifier DENY_SOUND_ID = Identifier.fromNamespaceAndPath(MOD_ID, "deny");
+    public static final SoundEvent DENY_SOUND = SoundEvent.createVariableRangeEvent(DENY_SOUND_ID);
     public static ModConfig CONFIG;
 
     @Override
     public void onInitialize() {
         CONFIG = ModConfig.load();
+        Registry.register(BuiltInRegistries.SOUND_EVENT, DENY_SOUND_ID, DENY_SOUND);
+        PayloadTypeRegistry.clientboundPlay().register(LockSyncPayload.TYPE, LockSyncPayload.CODEC);
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+            LockManager.syncLockState(handler.getPlayer())
+        );
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (CONFIG.blockLockEnabled && level instanceof ServerLevel serverLevel) {
                 LockManager.unlockPlacementAt(serverLevel, pos, state);

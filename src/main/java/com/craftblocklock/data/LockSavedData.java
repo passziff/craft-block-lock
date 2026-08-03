@@ -70,6 +70,10 @@ public final class LockSavedData extends SavedData {
         return craftedRecipes.getOrDefault(playerId, Set.of()).contains(recipeId);
     }
 
+    public Set<String> getCraftedRecipes(UUID playerId) {
+        return Set.copyOf(craftedRecipes.getOrDefault(playerId, Set.of()));
+    }
+
     public void lockRecipe(UUID playerId, String recipeId) {
         if (craftedRecipes.computeIfAbsent(playerId, ignored -> new HashSet<>()).add(recipeId)) {
             setDirty();
@@ -78,6 +82,10 @@ public final class LockSavedData extends SavedData {
 
     public Optional<StoredPlacement> getPlacement(UUID playerId, String typeId) {
         return Optional.ofNullable(placementsByPlayer.getOrDefault(playerId, Map.of()).get(typeId));
+    }
+
+    public Set<String> getPlacedTypes(UUID playerId) {
+        return Set.copyOf(placementsByPlayer.getOrDefault(playerId, Map.of()).keySet());
     }
 
     public void recordPlacement(UUID playerId, String typeId, String blockId, String dimension, long position) {

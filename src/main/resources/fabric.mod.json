@@ -16,6 +16,9 @@
   "entrypoints": {
     "main": [
       "com.craftblocklock.CraftBlockLock"
+    ],
+    "client": [
+      "com.craftblocklock.client.CraftBlockLockClient"
     ]
   },
   "mixins": [
