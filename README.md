@@ -15,7 +15,7 @@ Craft & Block Lock is a server-authoritative Fabric mod for Minecraft Java Editi
 - Missing tracked blocks are reconciled when the owner next tries to place that type, covering explosions and other indirect removal.
 - The server remains authoritative, while a synchronized client check prevents visual ghost placements.
 
-Blocked actions display a short action-bar message and play a denial sound by default. Both forms of feedback can be disabled independently.
+Blocked actions display a short action-bar message and play a low note-block sound by default. Locked recipes are darkened and marked with a small barrier icon in the recipe book and result slot. Messages, sounds, and recipe visuals can be disabled independently.
 
 ## Supported crafting paths
 
@@ -33,7 +33,7 @@ Blocked actions display a short action-bar message and play a denial sound by de
 
 Recipe-backed stations are keyed by recipe identifier. Brewing transformations use a stable key derived from the input item and potion, ingredient, and output item and potion. Automated and delayed outputs carry a hidden, unique provenance marker until a player acquires them, preventing separate operations from merging to bypass the lock.
 
-Vanilla utility stations that do not use recipes—anvils, enchanting tables, grindstones, looms, and cartography tables—remain freely usable by design.
+Vanilla utility stations that do not use recipes, including anvils, enchanting tables, grindstones, looms, and cartography tables, remain freely usable by design.
 
 ## Installation
 
@@ -52,6 +52,7 @@ Run `/cbl` or `/cbl status` to view the current settings. Configuration-changing
 | `/cbl blocks on\|off` | Enable or disable block-placement locking |
 | `/cbl feedback messages on\|off` | Toggle blocked-action messages |
 | `/cbl feedback sounds on\|off` | Toggle blocked-action sounds |
+| `/cbl feedback visuals on\|off` | Toggle locked recipe shading and barrier icons |
 | `/cbl reload` | Reload the JSON configuration from disk |
 | `/cbl reset <player> recipes` | Clear a player's recipe history |
 | `/cbl reset <player> blocks` | Clear a player's active block locks without breaking the blocks |
@@ -75,6 +76,7 @@ The mod creates `config/craftblocklock.json` on first launch. Commands save chan
   "blockLockEnabled": true,
   "messagesEnabled": true,
   "denialSoundsEnabled": true,
+  "lockedRecipeVisualsEnabled": true,
   "recipeExceptions": [
     "minecraft:blaze_powder",
     "minecraft:ender_eye"
@@ -97,4 +99,4 @@ The installable JAR is written to `build/libs/`.
 
 ## License
 
-The source code is available under the MIT License. See `THIRD_PARTY_NOTICES.md` for the denial sound attribution and license information.
+The source code is available under the MIT License.

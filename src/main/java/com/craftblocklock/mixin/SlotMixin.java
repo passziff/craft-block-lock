@@ -2,9 +2,6 @@ package com.craftblocklock.mixin;
 
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.lock.LockManager;
-import com.craftblocklock.lock.OperationKeys;
-import com.craftblocklock.client.ClientFeedback;
-import com.craftblocklock.client.ClientLockState;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
@@ -28,14 +25,6 @@ abstract class SlotMixin {
 
     @Inject(method = "mayPickup", at = @At("HEAD"), cancellable = true)
     private void craftblocklock$denyLockedResult(Player player, CallbackInfoReturnable<Boolean> callback) {
-        if (player.level().isClientSide()) {
-            if (isLockedOnClient()) {
-                ClientFeedback.showRecipeLocked(player);
-                callback.setReturnValue(false);
-            }
-            return;
-        }
-
         if (!CraftBlockLock.CONFIG.recipeLockEnabled || !(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
@@ -53,16 +42,6 @@ abstract class SlotMixin {
             LockManager.showRecipeLocked(serverPlayer);
             callback.setReturnValue(false);
         }
-    }
-
-    private boolean isLockedOnClient() {
-        if (container instanceof RecipeCraftingHolder holder) {
-            RecipeHolder<?> recipe = holder.getRecipeUsed();
-            if (recipe != null && ClientLockState.isRecipeLocked(LockManager.recipeKey(recipe))) {
-                return true;
-            }
-        }
-        return OperationKeys.read(getItem()).map(ClientLockState::isRecipeLocked).orElse(false);
     }
 
     @Inject(method = "onTake", at = @At("HEAD"))

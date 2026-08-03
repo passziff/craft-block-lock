@@ -22,6 +22,7 @@ public final class ModConfig {
     public boolean blockLockEnabled = true;
     public boolean messagesEnabled = true;
     public boolean denialSoundsEnabled = true;
+    public boolean lockedRecipeVisualsEnabled = true;
     public List<String> recipeExceptions = new ArrayList<>(List.of(
         "minecraft:blaze_powder",
         "minecraft:ender_eye"

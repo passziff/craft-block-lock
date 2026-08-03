@@ -5,10 +5,14 @@
 ### Added
 
 - Client-side block-lock synchronization to stop predicted duplicate placements before they appear.
-- A custom denial sound for blocked crafting and placement.
+- Client-side result checks that stop locked output clicks before the item reaches the cursor.
+- Darkened locked recipes with a small barrier icon in the recipe book and result slots.
+- An `Already crafted - recipe locked` tooltip for marked recipes and results.
+- A command and configuration setting for turning locked recipe visuals on or off.
 
 ### Changed
 
+- Blocked actions now use Minecraft's built-in note-block bass sound.
 - Utility stations such as anvils and enchanting tables remain freely usable by design.
 - Resetting a player's block locks now updates that player's client immediately.
 

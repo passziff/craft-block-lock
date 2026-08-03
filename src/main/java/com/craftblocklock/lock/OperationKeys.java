@@ -15,6 +15,7 @@ import java.util.UUID;
 public final class OperationKeys {
     private static final String RECIPE_TAG = "craftblocklock_recipe";
     private static final String BATCH_TAG = "craftblocklock_batch";
+    private static final String PREVIEW_TAG = "craftblocklock_preview_recipe";
 
     private OperationKeys() {
     }
@@ -36,6 +37,21 @@ public final class OperationKeys {
         return readProvenance(stack).map(Provenance::recipeKey);
     }
 
+    public static void markPreview(ItemStack stack, String recipeKey) {
+        if (!stack.isEmpty()) {
+            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(PREVIEW_TAG, recipeKey));
+        }
+    }
+
+    public static Optional<String> readLockKey(ItemStack stack) {
+        Optional<String> operation = read(stack);
+        if (operation.isPresent() || stack.isEmpty()) {
+            return operation;
+        }
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.getString(PREVIEW_TAG).filter(value -> !value.isBlank());
+    }
+
     public static Optional<Provenance> readProvenance(ItemStack stack) {
         if (stack.isEmpty()) {
             return Optional.empty();
@@ -50,6 +66,12 @@ public final class OperationKeys {
         if (!stack.isEmpty()) {
             CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.remove(RECIPE_TAG));
             CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.remove(BATCH_TAG));
+        }
+    }
+
+    public static void clearPreview(ItemStack stack) {
+        if (!stack.isEmpty()) {
+            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.remove(PREVIEW_TAG));
         }
     }
 

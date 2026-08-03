@@ -12,10 +12,15 @@
     "ItemEntityMixin",
     "ItemCombinerMenuMixin",
     "RecipeCraftingHolderMixin",
+    "ResultContainerMixin",
     "SlotMixin"
   ],
   "client": [
-    "client.ClientBlockItemMixin"
+    "client.AbstractContainerScreenMixin",
+    "client.ClientBlockItemMixin",
+    "client.OverlayRecipeButtonMixin",
+    "client.RecipeBookPageMixin",
+    "client.RecipeButtonMixin"
   ],
   "injectors": {
     "defaultRequire": 1

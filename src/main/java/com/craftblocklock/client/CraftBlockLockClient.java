@@ -11,11 +11,13 @@ public final class CraftBlockLockClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(LockSyncPayload.TYPE, (payload, context) ->
             ClientLockState.replace(
                 payload.recipeKeys(),
+                payload.recipeDisplayIds(),
                 payload.blockTypes(),
                 payload.recipeLockEnabled(),
                 payload.blockLockEnabled(),
                 payload.messagesEnabled(),
-                payload.soundsEnabled()
+                payload.soundsEnabled(),
+                payload.lockedRecipeVisualsEnabled()
             )
         );
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientLockState.clear());

@@ -50,7 +50,10 @@ public final class CraftBlockLockCommands {
                     .then(Commands.literal("off").executes(context -> setMessages(context, false))))
                 .then(Commands.literal("sounds")
                     .then(Commands.literal("on").executes(context -> setSounds(context, true)))
-                    .then(Commands.literal("off").executes(context -> setSounds(context, false)))))
+                    .then(Commands.literal("off").executes(context -> setSounds(context, false))))
+                .then(Commands.literal("visuals")
+                    .then(Commands.literal("on").executes(context -> setVisuals(context, true)))
+                    .then(Commands.literal("off").executes(context -> setVisuals(context, false)))))
             .then(Commands.literal("reload")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(CraftBlockLockCommands::reload))
@@ -90,6 +93,7 @@ public final class CraftBlockLockCommands {
                 + " | Block lock: " + state(CraftBlockLock.CONFIG.blockLockEnabled)
                 + " | Messages: " + state(CraftBlockLock.CONFIG.messagesEnabled)
                 + " | Sounds: " + state(CraftBlockLock.CONFIG.denialSoundsEnabled)
+                + " | Locked recipe visuals: " + state(CraftBlockLock.CONFIG.lockedRecipeVisualsEnabled)
         ), false);
         context.getSource().sendSuccess(() -> Component.literal(
             "Exceptions: " + CraftBlockLock.CONFIG.recipeExceptions.size() + " recipes, "
@@ -124,6 +128,13 @@ public final class CraftBlockLockCommands {
         CraftBlockLock.CONFIG.save();
         LockManager.syncAllPlayers(context.getSource().getServer());
         return confirm(context, "Denial sounds are now " + state(enabled) + ".");
+    }
+
+    private static int setVisuals(CommandContext<CommandSourceStack> context, boolean enabled) {
+        CraftBlockLock.CONFIG.lockedRecipeVisualsEnabled = enabled;
+        CraftBlockLock.CONFIG.save();
+        LockManager.syncAllPlayers(context.getSource().getServer());
+        return confirm(context, "Locked recipe visuals are now " + state(enabled) + ".");
     }
 
     private static int reload(CommandContext<CommandSourceStack> context) {

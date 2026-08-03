@@ -1,7 +1,7 @@
 package com.craftblocklock.client;
 
-import com.craftblocklock.CraftBlockLock;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -28,7 +28,7 @@ public final class ClientFeedback {
 
     private static void playSound(Player player) {
         if (ClientLockState.soundsEnabled()) {
-            player.playSound(CraftBlockLock.DENY_SOUND, 0.8F, 1.0F);
+            player.playSound(SoundEvents.NOTE_BLOCK_BASS.value(), 0.7F, 0.6F);
         }
     }
 }

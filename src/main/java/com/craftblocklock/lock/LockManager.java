@@ -3,6 +3,7 @@ package com.craftblocklock.lock;
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.data.LockSavedData;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -12,6 +13,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -22,6 +24,8 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import com.craftblocklock.network.LockSyncPayload;
 
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class LockManager {
     private LockManager() {
@@ -129,7 +133,7 @@ public final class LockManager {
             player.sendOverlayMessage(Component.literal("Recipe locked: you have already crafted this recipe."));
         }
         if (CraftBlockLock.CONFIG.denialSoundsEnabled) {
-            sendDenialSound(player, CraftBlockLock.DENY_SOUND, 0.8F, 1.0F);
+            sendDenialSound(player, SoundEvents.NOTE_BLOCK_BASS, 0.7F, 0.6F);
         }
     }
 
@@ -140,23 +144,37 @@ public final class LockManager {
             );
         }
         if (CraftBlockLock.CONFIG.denialSoundsEnabled) {
-            sendDenialSound(player, CraftBlockLock.DENY_SOUND, 0.8F, 1.0F);
+            sendDenialSound(player, SoundEvents.NOTE_BLOCK_BASS, 0.7F, 0.6F);
         }
     }
 
     public static void syncLockState(ServerPlayer player) {
         LockSavedData data = LockSavedData.get(player.level().getServer());
+        Set<String> lockedRecipeKeys = data.getCraftedRecipes(player.getUUID()).stream()
+            .filter(key -> !CraftBlockLock.CONFIG.isRecipeException(key))
+            .collect(java.util.stream.Collectors.toSet());
+        Set<Integer> lockedRecipeDisplays = new HashSet<>();
+        for (String recipeKey : lockedRecipeKeys) {
+            Identifier recipeId = Identifier.tryParse(recipeKey);
+            if (recipeId != null) {
+                player.level().recipeAccess().listDisplaysForRecipe(
+                    ResourceKey.create(Registries.RECIPE, recipeId),
+                    display -> lockedRecipeDisplays.add(display.id().index())
+                );
+            }
+        }
+
         ServerPlayNetworking.send(player, new LockSyncPayload(
-            data.getCraftedRecipes(player.getUUID()).stream()
-                .filter(key -> !CraftBlockLock.CONFIG.isRecipeException(key))
-                .collect(java.util.stream.Collectors.toSet()),
+            lockedRecipeKeys,
+            lockedRecipeDisplays,
             data.getPlacedTypes(player.getUUID()).stream()
                 .filter(key -> !CraftBlockLock.CONFIG.isBlockException(key))
                 .collect(java.util.stream.Collectors.toSet()),
             CraftBlockLock.CONFIG.recipeLockEnabled,
             CraftBlockLock.CONFIG.blockLockEnabled,
             CraftBlockLock.CONFIG.messagesEnabled,
-            CraftBlockLock.CONFIG.denialSoundsEnabled
+            CraftBlockLock.CONFIG.denialSoundsEnabled,
+            CraftBlockLock.CONFIG.lockedRecipeVisualsEnabled
         ));
     }
 
@@ -176,9 +194,9 @@ public final class LockManager {
         }
     }
 
-    private static void sendDenialSound(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
+    private static void sendDenialSound(ServerPlayer player, Holder<SoundEvent> sound, float volume, float pitch) {
         player.connection.send(new ClientboundSoundPacket(
-            BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound),
+            sound,
             SoundSource.PLAYERS,
             player.getX(),
             player.getY(),

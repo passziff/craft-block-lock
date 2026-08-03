@@ -11,11 +11,13 @@ import java.util.Set;
 
 public record LockSyncPayload(
     Set<String> recipeKeys,
+    Set<Integer> recipeDisplayIds,
     Set<String> blockTypes,
     boolean recipeLockEnabled,
     boolean blockLockEnabled,
     boolean messagesEnabled,
-    boolean soundsEnabled
+    boolean soundsEnabled,
+    boolean lockedRecipeVisualsEnabled
 ) implements CustomPacketPayload {
     public static final Type<LockSyncPayload> TYPE = new Type<>(
         Identifier.fromNamespaceAndPath(CraftBlockLock.MOD_ID, "block_locks")
@@ -26,7 +28,9 @@ public record LockSyncPayload(
         public LockSyncPayload decode(RegistryFriendlyByteBuf buffer) {
             return new LockSyncPayload(
                 readSet(buffer),
+                readIntSet(buffer),
                 readSet(buffer),
+                buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
                 buffer.readBoolean(),
@@ -37,11 +41,13 @@ public record LockSyncPayload(
         @Override
         public void encode(RegistryFriendlyByteBuf buffer, LockSyncPayload payload) {
             writeSet(buffer, payload.recipeKeys);
+            writeIntSet(buffer, payload.recipeDisplayIds);
             writeSet(buffer, payload.blockTypes);
             buffer.writeBoolean(payload.recipeLockEnabled);
             buffer.writeBoolean(payload.blockLockEnabled);
             buffer.writeBoolean(payload.messagesEnabled);
             buffer.writeBoolean(payload.soundsEnabled);
+            buffer.writeBoolean(payload.lockedRecipeVisualsEnabled);
         }
 
         private Set<String> readSet(RegistryFriendlyByteBuf buffer) {
@@ -57,10 +63,25 @@ public record LockSyncPayload(
             buffer.writeVarInt(values.size());
             values.forEach(buffer::writeUtf);
         }
+
+        private Set<Integer> readIntSet(RegistryFriendlyByteBuf buffer) {
+            int size = buffer.readVarInt();
+            Set<Integer> values = new HashSet<>(size);
+            for (int index = 0; index < size; index++) {
+                values.add(buffer.readVarInt());
+            }
+            return values;
+        }
+
+        private void writeIntSet(RegistryFriendlyByteBuf buffer, Set<Integer> values) {
+            buffer.writeVarInt(values.size());
+            values.forEach(buffer::writeVarInt);
+        }
     };
 
     public LockSyncPayload {
         recipeKeys = Set.copyOf(recipeKeys);
+        recipeDisplayIds = Set.copyOf(recipeDisplayIds);
         blockTypes = Set.copyOf(blockTypes);
     }
 
