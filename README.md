@@ -95,8 +95,6 @@ Java 25 and Gradle 9.5 are required. The included Gradle wrapper can build the p
 
 The installable JAR is written to `build/libs/`.
 
-Every push is also compiled by GitHub Actions. The build page provides the generated JARs as a downloadable artifact, making it possible to test a commit before publishing a release.
-
 ## License
 
 The source code is available under the MIT License. See `THIRD_PARTY_NOTICES.md` for the denial sound attribution and license information.
