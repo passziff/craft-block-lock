@@ -2,6 +2,7 @@ package com.craftblocklock.command;
 
 import com.craftblocklock.CraftBlockLock;
 import com.craftblocklock.data.LockSavedData;
+import com.craftblocklock.lock.LockManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
